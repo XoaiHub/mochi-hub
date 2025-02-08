@@ -83,11 +83,26 @@ function checkQuest()
         NameQ = "SnowQuest"
         LvQ = 1
         CFQ = CFrame.new(1181.7484130859375, 85.97068786621094, -1318.0391845703125)
-    elseif lvl >= 100 and lvl <= 120 then
+    elseif lvl >= 100 and lvl <= 119 then
         NameM = "Snowman"
         NameQ = "SnowQuest"
         LvQ = 2
         CFQ = CFrame.new(1153.3218994140625, 104.47148895263672, -1431.357177734375)
+    elseif lvl >= 120 and lvl <= 149 then
+        NameM = "Chief Petty Officer"
+        NameQ = "MarineQuest2"
+        LvQ = 1
+        CFQ = CFrame.new(-4923.10791015625, 19.349998474121094, 4076.943359375)
+    elseif lvl >= 150 and lvl <= 174 then
+        NameM = "Sky Bandit"
+        NameQ = "SkyQuest"
+        LvQ = 1
+        CFQ = CFrame.new(-4960.736328125, 276.7643737792969, -2797.63916015625)
+    elseif lvl >= 175 and lvl <= 199 then
+        NameM = "Dark Master"
+        NameQ = "SkyQuest"
+        LvQ = 2
+        CFQ = CFrame.new(-5339.18212890625, 387.3499755859375, -2258.0126953125)
     end
 end
 
@@ -119,16 +134,22 @@ function FastAttack()
     local character = player.Character or player.CharacterAdded:Wait()
     local rootPart = character:WaitForChild("HumanoidRootPart")
 
-    local success, err = pcall(function()
+    -- Start fast attack using RegisterAttack
+    local attackSuccess, attackErr = pcall(function()
         ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterAttack"):FireServer(0.5)
     end)
-    if not success then
-        warn("Error during fast attack: " .. tostring(err))
+    
+    if not attackSuccess then
+        warn("Error during fast attack: " .. tostring(attackErr))
         return
     end
-    
+
+    -- Now handle the enemies
     local enemiesFolder = workspace:FindFirstChild("Enemies")
-    if not enemiesFolder then return end
+    if not enemiesFolder then 
+        warn("Enemies folder not found in workspace.")
+        return 
+    end
 
     for _, enemy in ipairs(enemiesFolder:GetChildren()) do
         if enemy:IsA("Model") and enemy:FindFirstChild("Head") then
@@ -137,20 +158,47 @@ function FastAttack()
             if head and humanoid then
                 local distance = (head.Position - rootPart.Position).Magnitude
                 if distance <= 60 then
-                    -- Ensure that we properly handle the hit registration and hidden state of the head
-                    pcall(function()
+                    -- Hide the enemy's head to simulate a hit
+                    local hideSuccess, hideErr = pcall(function()
                         head:SetAttribute("Hidden", true)
                     end)
-                    success, err = pcall(function()
-                        ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterHit"):FireServer(enemy.Head)
+
+                    if not hideSuccess then
+                        warn("Error hiding head: " .. tostring(hideErr))
+                    end
+
+                    -- Register hit on the enemy
+                    local hitSuccess, hitErr = pcall(function()
+                        ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterHit"):FireServer(head)
                     end)
-                    if not success then
-                        warn("Error during RegisterHit: " .. tostring(err))
-                        return
+
+                    if not hitSuccess then
+                        warn("Error during RegisterHit: " .. tostring(hitErr))
                     end
                 end
             end
         end
+    end
+end
+
+-- Function to add points to Defense
+function addDefensePoints(points)
+    local args = {
+        [1] = "AddPoint",   -- Command to add points
+        [2] = "Defense",    -- Type of point (Defense in this case)
+        [3] = points       -- Number of points you want to add
+    }
+
+    -- Send the request to the server to add points
+    local success, result = pcall(function()
+        game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer(unpack(args))
+    end)
+
+    -- Handle success or failure
+    if success then
+        print("Successfully added " .. points .. " Defense points.")
+    else
+        warn("Error adding Defense points: " .. tostring(result))
     end
 end
 
@@ -178,7 +226,7 @@ function randomFruit()
     local actions = {"Buy", "Equip"}  -- Example actions
 
     local selectedFruit = fruits[math.random(1, #fruits)]
-    local selectedAction = actions[math.random(1, #actions)]
+    local selectedAction = actions[math.random(1, #actions)] 
 
     -- Display the chosen action and fruit
     print("Executing action: " .. selectedAction .. " on fruit: " .. selectedFruit)
@@ -197,6 +245,21 @@ function randomFruit()
     else
         warn("Error invoking server: " .. tostring(result))
     end
+end
+
+-- Function to add points to Melee automatically
+function addMeleePoints()
+    local args = {
+        [1] = "AddPoint",  -- Lệnh thêm điểm
+        [2] = "Melee",     -- Kiểu điểm là Melee
+        [3] = points       -- Number of points you want to add
+    }
+
+    -- Gọi InvokeServer để thực hiện lệnh
+    pcall(function()
+        game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer(unpack(args))
+        print("Successfully added Melee points!")
+    end)
 end
 
 -- Global variable for auto farm
@@ -242,4 +305,10 @@ while task.wait() do
             randomFruit()
         end
     end)
+
+    -- Add melee points every second
+    addMeleePoints()
+
+    -- Add defense points every second
+    addDefensePoints(1)
 end
