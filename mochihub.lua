@@ -109,7 +109,6 @@ end
 -- Function to start the quest
 function getQ()
     checkQuest()
-    -- Only attempt to start the quest if it is properly set
     if NameQ and LvQ then
         local args = {
             [1] = "StartQuest",
@@ -138,13 +137,13 @@ function FastAttack()
     local attackSuccess, attackErr = pcall(function()
         ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterAttack"):FireServer(0.5)
     end)
-    
+
     if not attackSuccess then
         warn("Error during fast attack: " .. tostring(attackErr))
         return
     end
 
-    -- Now handle the enemies
+    -- Handle the enemies
     local enemiesFolder = workspace:FindFirstChild("Enemies")
     if not enemiesFolder then 
         warn("Enemies folder not found in workspace.")
@@ -248,27 +247,52 @@ function randomFruit()
 end
 
 -- Function to add points to Melee automatically
-function addMeleePoints()
+function addMeleePoints(points)
     local args = {
-        [1] = "AddPoint",  -- Lệnh thêm điểm
-        [2] = "Melee",     -- Kiểu điểm là Melee
+        [1] = "AddPoint",  -- Command to add points
+        [2] = "Melee",     -- Type of point (Melee in this case)
         [3] = points       -- Number of points you want to add
     }
 
-    -- Gọi InvokeServer để thực hiện lệnh
+    -- Call InvokeServer to execute the command
     pcall(function()
         game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer(unpack(args))
         print("Successfully added Melee points!")
     end)
 end
 
+-- Function to equip item (like "Combat")
+local player = game:GetService("Players")
+local LocalPlayer = player.LocalPlayer  -- Ensure accessing the correct player
+
+-- Function to equip a weapon (tool) to the character
+equipitem = function(v)
+    -- Check if the tool exists in the Backpack
+    local tool = LocalPlayer.Backpack:FindFirstChild(v)
+    if tool then
+        -- If the tool exists, equip it to the character
+        LocalPlayer.Character.Humanoid:EquipTool(tool)
+        print(v .. " đã được trang bị!")
+    else
+        warn(v .. " không tồn tại trong Backpack!")
+    end
+end
+
+-- Infinite loop to keep equipping the item
+task.spawn(function()
+    while true do
+        equipitem("Combat")  -- Change "Combat" to the item name you want to equip
+        task.wait(1)  -- Wait for 1 second before checking again (to prevent overload)
+    end
+end)
+
 -- Global variable for auto farm
 _G.AutoFarm = true
 
 -- Main farming loop
-while task.wait() do
-    pcall(function()
-        if _G.AutoFarm then
+task.spawn(function()
+    while _G.AutoFarm do
+        pcall(function()
             -- Kiểm tra và thực hiện quest
             if game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == false then
                 checkQuest()
@@ -277,7 +301,7 @@ while task.wait() do
             elseif game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == true then
                 checkQuest()
                 if game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Container.QuestTitle.Title.Text:find(NameM) then
-                    -- Tấn công và đưa kẻ thù đến vị trí
+                    -- Attack and bring the enemy to position
                     if workspace.Enemies:FindFirstChild(NameM) then
                         for _, v in pairs(workspace.Enemies:GetChildren()) do
                             if v.Name == NameM then
@@ -288,7 +312,7 @@ while task.wait() do
                                             BringMob(v.HumanoidRootPart.CFrame)
                                             TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0))
                                             FastAttack()
-                                        until not _G.AutoFarm or v.Humanoid.Health <= 0
+                                        until v.Humanoid.Health <= 0
                                     end
                                 end  
                             end
@@ -303,12 +327,14 @@ while task.wait() do
             end
             -- Random fruit action every 5 seconds
             randomFruit()
-        end
-    end)
+        end)
 
-    -- Add melee points every second
-    addMeleePoints()
+        -- Add melee points every second
+        addMeleePoints(1)
 
-    -- Add defense points every second
-    addDefensePoints(1)
-end
+        -- Add defense points every second
+        addDefensePoints(1)
+
+        task.wait(1)
+    end
+end)
