@@ -132,11 +132,21 @@ function checkQuest()
         NameQ = "SkyQuest"
         LvQ = 1
         CFQ = CFrame.new(-4960.736328125, 276.7643737792969, -2797.63916015625)
-    elseif lvl >= 175 and lvl <= 199 then
+    elseif lvl >= 175 and lvl <= 189 then
         NameM = "Dark Master"
         NameQ = "SkyQuest"
         LvQ = 2
         CFQ = CFrame.new(-5339.18212890625, 387.3499755859375, -2258.0126953125)
+    elseif lvl >= 190 and lvl <= 209 then
+        NameM = "Prisoner"
+        NameQ = "PrisonerQuest"
+        LvQ = 1
+        CFQ = CFrame.new(5221.13134765625, 0.3318325877189636, 442.4338073730469)
+    elseif lvl >= 210 and lvl <= 259 then
+        NameM = "Dangerous Prisoner"
+        NameQ = "PrisonerQuest"
+        LvQ = 2
+        CFQ = CFrame.new(5477.04150390625, 0.34914466738700867, 466.3166198730469)
     end
 end
 
@@ -344,7 +354,7 @@ task.spawn(function()
                                         repeat
                                             task.wait(0.01)
                                             BringMob(v.HumanoidRootPart.CFrame)
-                                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0))
+                                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0))
                                             Tween(v.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0), 20)  -- Use tween with  seconds duration
                                             FastAttack()
                                         until v.Humanoid.Health <= 0
@@ -414,4 +424,3 @@ end)
 
 -- Call the function to start auto-activating Buso Haki once when the script starts
 autoActivateBusoHakiOnce()
-
