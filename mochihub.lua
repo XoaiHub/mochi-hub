@@ -344,7 +344,7 @@ task.spawn(function()
                                         repeat
                                             task.wait(0.01)
                                             BringMob(v.HumanoidRootPart.CFrame)
-                                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 30, 0))
+                                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0))
                                             Tween(v.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0), 20)  -- Use tween with  seconds duration
                                             FastAttack()
                                         until v.Humanoid.Health <= 0
