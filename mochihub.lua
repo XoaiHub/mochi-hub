@@ -373,16 +373,31 @@ task.spawn(function()
         task.wait(1)
     end
 end)
-_G.AUTOHAKI = true
-spawn(function()
-	while wait(.1) do
-		if _G.AUTOHAKI then 
-			if not game.Players.LocalPlayer.Character:FindFirstChild("HasBuso") then
-				local args = {
-					[1] = "Buso"
-				}
-				game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
-			end
-		end
-	end
-end)
+-- Function to automatically activate Buso Haki
+function autoActivateBusoHaki()
+    local args = {
+        [1] = "Buso"  -- Command to activate Buso Haki
+    }
+
+    -- Infinite loop to keep activating Buso Haki
+    while true do
+        -- Invoke the server with the provided arguments
+        local success, result = pcall(function()
+            game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer(unpack(args))
+        end)
+
+        -- Check if the command was successful
+        if success then
+            print("Successfully activated Buso Haki.")
+        else
+            warn("Error activating Buso Haki: " .. tostring(result))
+        end
+
+        -- Wait before repeating the process (adjust the wait time as needed)
+        wait(5)  -- Wait 5 seconds before attempting to activate again
+    end
+end
+
+-- Call the function to start auto-activating Buso Haki
+autoActivateBusoHaki()
+
