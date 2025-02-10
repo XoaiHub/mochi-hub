@@ -25,6 +25,7 @@ autoSelectTeam()
 local NameM, NameQ, LvQ, CFQ
 
 -- Function to teleport to a position using Tween (adjustable duration for slower movement)
+-- Function for teleportation to a position
 function TP(Pos)
     local character = game.Players.LocalPlayer.Character
     if character and character:FindFirstChild("HumanoidRootPart") then
@@ -41,7 +42,7 @@ function Tween(Pos, duration)
         local TweenService = game:GetService("TweenService")
 
         -- Set a default duration if not provided
-        duration = duration or 10  -- Default to 10 seconds if not provided
+        duration = duration or 6  -- Default to 6 seconds if not provided
 
 
         -- Create a TweenInfo object
@@ -329,7 +330,7 @@ task.spawn(function()
             -- Kiểm tra và thực hiện quest
             if game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == false then
                 checkQuest()
-                Tween(CFQ, 10)  -- Use tween-based teleport with 10 seconds duration
+                Tween(CFQ, 10)  -- Use tween-based teleport with 15 seconds duration
                 getQ()
             elseif game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == true then
                 checkQuest()
@@ -344,7 +345,7 @@ task.spawn(function()
                                             task.wait(0.01)
                                             BringMob(v.HumanoidRootPart.CFrame)
                                             TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 30, 0))
-                                            Tween(v.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0))  -- Use tween with  seconds duration
+                                            Tween(v.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0), 20)  -- Use tween with  seconds duration
                                             FastAttack()
                                         until v.Humanoid.Health <= 0
                                     end
@@ -371,4 +372,17 @@ task.spawn(function()
 
         task.wait(1)
     end
+end)
+_G.AUTOHAKI = true
+spawn(function()
+	while wait(.1) do
+		if _G.AUTOHAKI then 
+			if not game.Players.LocalPlayer.Character:FindFirstChild("HasBuso") then
+				local args = {
+					[1] = "Buso"
+				}
+				game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
+			end
+		end
+	end
 end)
