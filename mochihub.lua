@@ -41,7 +41,7 @@ function Tween(Pos, duration)
         local TweenService = game:GetService("TweenService")
 
         -- Set a default duration if not provided
-        duration = duration or 1  -- Default to 1 seconds if not provided
+        duration = duration or 10  -- Default to 10 seconds if not provided
 
 
         -- Create a TweenInfo object
@@ -85,7 +85,7 @@ function checkQuest()
         NameM = "Gorilla"
         NameQ = "JungleQuest"
         LvQ = 2
-        CFQ = CFrame.new(-1598.089111328125, 35.55011749267578, 153.37783813476562)
+        CFQ = CFrame.new(-1232.4705810546875, 2.222564935684204, -516.0242919921875)
     elseif lvl >= 25 and lvl <= 29 then
         NameM = "The Gorilla King"
         NameQ = "JungleQuest"
@@ -329,7 +329,7 @@ task.spawn(function()
             -- Kiểm tra và thực hiện quest
             if game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == false then
                 checkQuest()
-                Tween(CFQ)  -- Use tween-based teleport with 1 seconds duration
+                Tween(CFQ, 10)  -- Use tween-based teleport with 10 seconds duration
                 getQ()
             elseif game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == true then
                 checkQuest()
@@ -343,8 +343,8 @@ task.spawn(function()
                                         repeat
                                             task.wait(0.01)
                                             BringMob(v.HumanoidRootPart.CFrame)
-                                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0))
-                                            Tween(v.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0))  -- Use tween with 1 seconds duration
+                                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 30, 0))
+                                            Tween(v.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0))  -- Use tween with  seconds duration
                                             FastAttack()
                                         until v.Humanoid.Health <= 0
                                     end
