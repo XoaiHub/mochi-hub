@@ -41,7 +41,7 @@ function Tween(Pos, duration)
         local TweenService = game:GetService("TweenService")
 
         -- Set a default duration if not provided
-        duration = duration or 10  -- Default to 10 seconds if not provided
+        duration = duration or 1  -- Default to 1 seconds if not provided
 
 
         -- Create a TweenInfo object
@@ -189,7 +189,7 @@ function FastAttack()
             local humanoid = enemy:FindFirstChild("Humanoid")
             if head and humanoid then
                 local distance = (head.Position - rootPart.Position).Magnitude
-                if distance <= 60 then
+                if distance <= 100 then
                     -- Hide the enemy's head to simulate a hit
                     local hideSuccess, hideErr = pcall(function()
                         head:SetAttribute("Hidden", true)
@@ -329,7 +329,6 @@ task.spawn(function()
             -- Kiểm tra và thực hiện quest
             if game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == false then
                 checkQuest()
-                TP(CFQ)
                 Tween(CFQ)  -- Use tween-based teleport with 1 seconds duration
                 getQ()
             elseif game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == true then
@@ -344,7 +343,7 @@ task.spawn(function()
                                         repeat
                                             task.wait(0.01)
                                             BringMob(v.HumanoidRootPart.CFrame)
-                                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0))
+                                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0))
                                             Tween(v.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0))  -- Use tween with 1 seconds duration
                                             FastAttack()
                                         until v.Humanoid.Health <= 0
