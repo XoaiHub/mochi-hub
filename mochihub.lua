@@ -373,15 +373,22 @@ task.spawn(function()
         task.wait(1)
     end
 end)
--- Function to automatically activate Buso Haki
-function autoActivateBusoHaki()
-    local args = {
-        [1] = "Buso"  -- Command to activate Buso Haki
-    }
 
-    -- Infinite loop to keep activating Buso Haki
-    while true do
-        -- Invoke the server with the provided arguments
+-- Function to check if Buso Haki is already active
+function isBusoHakiActive()
+    -- Replace this with the appropriate check if Buso Haki is on
+    -- For example, checking a GUI element or player status
+    return game:GetService("Players").LocalPlayer:FindFirstChild("BusoHakiStatus") and game:GetService("Players").LocalPlayer.BusoHakiStatus.Value == true
+end
+
+-- Function to automatically activate Buso Haki only once
+function autoActivateBusoHakiOnce()
+    if not isBusoHakiActive() then
+        local args = {
+            [1] = "Buso"  -- Command to activate Buso Haki
+        }
+
+        -- Activate Buso Haki
         local success, result = pcall(function()
             game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer(unpack(args))
         end)
@@ -392,12 +399,19 @@ function autoActivateBusoHaki()
         else
             warn("Error activating Buso Haki: " .. tostring(result))
         end
-
-        -- Wait before repeating the process (adjust the wait time as needed)
-        wait(5)  -- Wait 5 seconds before attempting to activate again
+    else
+        print("Buso Haki is already active.")
     end
 end
 
--- Call the function to start auto-activating Buso Haki
-autoActivateBusoHaki()
+-- Function to handle character respawn and automatically activate Buso Haki
+game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function()
+    -- Wait for the character to load
+    wait(1)  -- Adjust the wait time as necessary
+    -- Automatically activate Buso Haki upon respawn
+    autoActivateBusoHakiOnce()
+end)
+
+-- Call the function to start auto-activating Buso Haki once when the script starts
+autoActivateBusoHakiOnce()
 
