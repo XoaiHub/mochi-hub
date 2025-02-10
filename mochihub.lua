@@ -24,11 +24,35 @@ autoSelectTeam()
 -- Global variables for quest and fruit
 local NameM, NameQ, LvQ, CFQ
 
--- Function for teleportation to a position
-function TP(Pos)
+-- Function to teleport to a position using Tween (adjustable duration for slower movement)
+function Tween(Pos, duration)
     local character = game.Players.LocalPlayer.Character
     if character and character:FindFirstChild("HumanoidRootPart") then
-        character.HumanoidRootPart.CFrame = Pos
+        -- Import TweenService
+        local TweenService = game:GetService("TweenService")
+
+        -- Set a default duration if not provided
+        duration = duration or 3  -- Default to 3 seconds if not provided
+
+
+        -- Create a TweenInfo object
+        local tweenInfo = TweenInfo.new(
+            duration, -- Duration (adjustable)
+            Enum.EasingStyle.Linear, -- Easing style for smoothness
+            Enum.EasingDirection.Out, -- Direction of the easing
+            0, -- No repeat count
+            false, -- Don't reverse the tween
+            0 -- No delay before starting the tween
+        )
+        
+        -- Create the goal for the tween
+        local goal = {CFrame = Pos}
+        
+        -- Create the tween using TweenService
+        local tween = TweenService:Create(character.HumanoidRootPart, tweenInfo, goal)
+        
+        -- Play the tween
+        tween:Play()
     else
         warn("HumanoidRootPart not found!")
     end
@@ -296,7 +320,7 @@ task.spawn(function()
             -- Kiểm tra và thực hiện quest
             if game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == false then
                 checkQuest()
-                TP(CFQ)
+                Tween(CFQ, 3)  -- Use tween-based teleport with 3 seconds duration
                 getQ()
             elseif game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == true then
                 checkQuest()
@@ -310,7 +334,7 @@ task.spawn(function()
                                         repeat
                                             task.wait(0.01)
                                             BringMob(v.HumanoidRootPart.CFrame)
-                                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0))
+                                            Tween(v.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0), 3)  -- Use tween with 3 seconds duration
                                             FastAttack()
                                         until v.Humanoid.Health <= 0
                                     end
