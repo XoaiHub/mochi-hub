@@ -142,11 +142,21 @@ function checkQuest()
         NameQ = "PrisonerQuest"
         LvQ = 1
         CFQ = CFrame.new(5221.13134765625, 0.3318325877189636, 442.4338073730469)
-    elseif lvl >= 210 and lvl <= 259 then
+    elseif lvl >= 210 and lvl <= 249 then
         NameM = "Dangerous Prisoner"
         NameQ = "PrisonerQuest"
         LvQ = 2
         CFQ = CFrame.new(5477.04150390625, 0.34914466738700867, 466.3166198730469)
+    elseif lvl >= 250 and lvl <= 274 then
+        NameM = "Toga Warrior"
+        NameQ = "ColosseumQuest"
+        LvQ = 1
+        CFQ = CFrame.new(-1664.951416015625, -2.7931976318359375, -2981.8759765625)
+    elseif lvl >= 275 and lvl <= 298 then
+        NameM = "Gladiator"
+        NameQ = "ColosseumQuest"
+        LvQ = 2
+        CFQ = CFrame.new(-1426.0404052734375, -0.739990234375, -3200.133544921875)
     end
 end
 
@@ -252,7 +262,7 @@ function BringMob(PosMon)
         for _, v in pairs(workspace.Enemies:GetChildren()) do
             if v.Name == NameM and v:FindFirstChild("HumanoidRootPart") then
                 local humanoid = v:FindFirstChild("Humanoid")
-                if humanoid and humanoid.Health > 0 then
+                if humanoid and humanoid.Health > 10 then
                     v.HumanoidRootPart.CanCollide = false
                     v.HumanoidRootPart.CFrame = PosMon                                                          
                 end
@@ -340,7 +350,7 @@ task.spawn(function()
             -- Kiểm tra và thực hiện quest
             if game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == false then
                 checkQuest()
-                Tween(CFQ, 10)  -- Use tween-based teleport with 15 seconds duration
+                Tween(CFQ, 5)  -- Use tween-based teleport with 15 seconds duration
                 getQ()
             elseif game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == true then
                 checkQuest()
@@ -354,8 +364,7 @@ task.spawn(function()
                                         repeat
                                             task.wait(0.01)
                                             BringMob(v.HumanoidRootPart.CFrame)
-                                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 10, 0))
-                                            Tween(v.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0), 20)  -- Use tween with  seconds duration
+                                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 40, 0))          
                                             FastAttack()
                                         until v.Humanoid.Health <= 0
                                     end
