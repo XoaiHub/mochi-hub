@@ -1,7 +1,7 @@
 -- discord.gg/tboyroblox
 
 
-shared.LoaderTitle = "Đăng Ký Kênh TBoy Roblox";
+shared.LoaderTitle = "Mochi Hub";
 shared.LoaderKeyFrames = {
     [1] = {
         1,
