@@ -26,7 +26,7 @@ local Tabs = {
     Misc = Window:AddTab({ Title = "Misc", Icon = "list-plus" }),
     Hop = Window:AddTab({ Title = "Hop", Icon = "wifi" }),
 }
-
+local Options = Fluent.Options
 --------------------------------------------------------------------------------------------------------------------------------------------
 --// Place Id Check
 local id = game.PlaceId
