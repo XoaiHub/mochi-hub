@@ -1,13 +1,12 @@
 local Players = cloneref(game:GetService("Players"))
 local LocalPlayer = Players.LocalPlayer
 local Workspace = cloneref(workspace)
+local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
 local FarmModel = nil
 
 -- Config
 local PickupEnabled = true
-local PickupRadius = 150 -- bán kính lọc, không bắt buộc để fire
-
--- CFrame đích sau 1 phút
+local SellInterval = 60 -- Thời gian giữa mỗi lần bán (giây)
 local ReturnCFrame = CFrame.new(
     86.5854721, 2.76619363, 0.426784277,
     0, 0, -1,
@@ -23,17 +22,25 @@ for _, descendant in next, Workspace:FindFirstChild("Farm"):GetDescendants() do
     end
 end
 
--- Sau 60 giây sẽ teleport về vị trí cố định
-task.delay(60, function()
-    if PickupEnabled then
+-- Vòng lặp bán mỗi X giây
+task.spawn(function()
+    while PickupEnabled do
+        task.wait(SellInterval)
+
         local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if hrp then
+            -- Teleport về vị trí chỉ định
             hrp.CFrame = ReturnCFrame
+            task.wait(0.5)
+
+            -- Fire sự kiện bán
+            local sellEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Sell_Inventory")
+            sellEvent:FireServer()
         end
     end
 end)
 
--- Main Loop
+-- Vòng lặp thu hoạch cây
 task.spawn(function()
     while PickupEnabled and FarmModel do
         local plants_folder = FarmModel:FindFirstChild("Plants_Physical")
@@ -46,12 +53,11 @@ task.spawn(function()
 
                             local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                             if hrp then
-                                -- Teleport tới cây
+                                -- Teleport tạm tới cây
                                 hrp.CFrame = CFrame.new(plant_pos + Vector3.new(0, 2, 0))
                                 task.wait(0.2)
 
                                 fireproximityprompt(object)
-
                                 task.wait(0.1)
                             end
                         end
