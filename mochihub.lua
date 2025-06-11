@@ -2,8 +2,6 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/hungquan99/FluentUI/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/hungquan99/FluentUI/master/Addons/InterfaceManager.lua"))()
 
-local minimizeUI = Enum.KeyCode.RightAlt
-
 local Window = Fluent:CreateWindow({
     Title = "Hutao hub [FREE]",
     SubTitle = "Blox Fruits",
@@ -28,7 +26,7 @@ local Tabs = {
     Misc = Window:AddTab({ Title = "Misc", Icon = "list-plus" }),
     Hop = Window:AddTab({ Title = "Hop", Icon = "wifi" }),
 }
-
+local Options = Fluent.Options
 --------------------------------------------------------------------------------------------------------------------------------------------
 --// Place Id Check
 local id = game.PlaceId
