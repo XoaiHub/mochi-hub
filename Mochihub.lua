@@ -1,69 +1,64 @@
 local Players = cloneref(game:GetService("Players"))
-local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
-local Workspace = cloneref(workspace)
-
 local LocalPlayer = Players.LocalPlayer
-local SellEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Sell_Inventory")
-local SellPosition = CFrame.new(86.5854721, 2.76619363, 0.426784277, 0, 0, -1, 0, 1, 0, 1, 0, 0)
-
+local Workspace = cloneref(workspace)
 local FarmModel = nil
-local Running = true
 
--- ⚠️ Thay thế bằng logic thật sự để xác định túi đầy
-local function isBagFull()
-    -- Ví dụ:
-    -- return LocalPlayer:FindFirstChild("Bag").Value >= LocalPlayer:FindFirstChild("MaxBag").Value
-    return false -- Mặc định chưa đầy túi
-end
+-- Config
+local PickupEnabled = true
+local PickupRadius = 150 -- bán kính lọc, không bắt buộc để fire
 
-local function teleportTo(cf)
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        char:PivotTo(cf)
+-- CFrame đích sau 1 phút
+local ReturnCFrame = CFrame.new(
+    86.5854721, 2.76619363, 0.426784277,
+    0, 0, -1,
+    0, 1, 0,
+    1, 0, 0
+)
+
+-- Tìm farm của người chơi
+for _, descendant in next, Workspace:FindFirstChild("Farm"):GetDescendants() do
+    if descendant.Name == "Owner" and descendant.Value == LocalPlayer.Name then
+        FarmModel = descendant.Parent and descendant.Parent.Parent
+        break
     end
 end
 
--- Tìm farm model của bạn
-do
-    local farmFolder = Workspace:FindFirstChild("Farm")
-    if farmFolder then
-        for _, desc in ipairs(farmFolder:GetDescendants()) do
-            if desc.Name == "Owner" and desc.Value == LocalPlayer.Name then
-                FarmModel = desc.Parent and desc.Parent.Parent
-                break
-            end
+-- Sau 60 giây sẽ teleport về vị trí cố định
+task.delay(60, function()
+    if PickupEnabled then
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = ReturnCFrame
         end
     end
-end
+end)
 
--- Main loop
+-- Main Loop
 task.spawn(function()
-    while Running and FarmModel do
-        if isBagFull() then
-            teleportTo(SellPosition)
-            task.wait(1)
-            SellEvent:FireServer()
-            task.wait(1)
-        else
-            local Plants = FarmModel:FindFirstChild("Plants_Physical")
-            if Plants then
-                for _, plant in ipairs(Plants:GetChildren()) do
-                    if isBagFull() then break end
+    while PickupEnabled and FarmModel do
+        local plants_folder = FarmModel:FindFirstChild("Plants_Physical")
+        if plants_folder then
+            for _, plant_model in next, plants_folder:GetChildren() do
+                if plant_model:IsA("Model") then
+                    for _, object in next, plant_model:GetDescendants() do
+                        if object:IsA("ProximityPrompt") then
+                            local plant_pos = plant_model:GetPivot().Position
 
-                    if plant:IsA("Model") then
-                        local prompt = plant:FindFirstDescendantWhichIsA("ProximityPrompt")
-                        if prompt then
-                            local pos = plant:GetPivot().Position + Vector3.new(0, 3, 0)
-                            teleportTo(CFrame.new(pos))
-                            task.wait(0.05)
-                            fireproximityprompt(prompt)
-                            task.wait(0.1)
+                            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                            if hrp then
+                                -- Teleport tới cây
+                                hrp.CFrame = CFrame.new(plant_pos + Vector3.new(0, 2, 0))
+                                task.wait(0.2)
+
+                                fireproximityprompt(object)
+
+                                task.wait(0.1)
+                            end
                         end
                     end
                 end
             end
         end
-
-        task.wait(0.2)
+        task.wait(0.5)
     end
 end)
