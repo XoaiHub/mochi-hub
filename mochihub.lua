@@ -1,53 +1,50 @@
-local players_service = cloneref(game:GetService("Players"))
-local local_player = players_service.LocalPlayer
-local workspace_ref = cloneref(workspace)
-local farm_model = nil
+local Players = cloneref(game:GetService("Players"))
+local LocalPlayer = Players.LocalPlayer
+local Workspace = cloneref(workspace)
+local FarmModel = nil
 
 -- Config
-local pickup_enabled = true
--- Sell point CFrame (vị trí bạn muốn đứng yên)
-local sell_position = CFrame.new(86.5854721, 2.76619363, 0.426784277, 0, 0, -1, 0, 1, 0, 1, 0, 0)
+local PickupEnabled = true
+local PickupRadius = 150
 
--- Đưa người chơi đứng yên tại vị trí sell point
-task.spawn(function()
-    while pickup_enabled do
-        local char = local_player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char:PivotTo(sell_position)
+-- Wait for character
+repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+-- Find player's farm
+local farmFolder = Workspace:FindFirstChild("Farm")
+if farmFolder then
+    for _, descendant in next, farmFolder:GetDescendants() do
+        if descendant.Name == "Owner" and descendant:IsA("ObjectValue") and descendant.Value == LocalPlayer.Name then
+            FarmModel = descendant:FindFirstAncestorOfClass("Model")
+            break
         end
-        task.wait(1)
-    end
-end)
-
--- Tìm farm model của người chơi
-for _, descendant in next, workspace_ref:FindFirstChild("Farm"):GetDescendants() do
-    if descendant.Name == "Owner" and descendant.Value == local_player.Name then
-        farm_model = descendant.Parent and descendant.Parent.Parent
-        break
     end
 end
 
--- Gọi fireproximityprompt toàn bộ cây, từ xa
+-- Pickup loop
 task.spawn(function()
-    while pickup_enabled and farm_model do
-        local plants_folder = farm_model:FindFirstChild("Plants_Physical")
-        if plants_folder then
-            for _, plant_model in next, plants_folder:GetChildren() do
-                if plant_model:IsA("Model") then
-                    for _, object in next, plant_model:GetDescendants() do
-                        if object:IsA("ProximityPrompt") then
-                            -- ⚠️ Mở giới hạn khoảng cách nếu game cho phép
-                            pcall(function()
-                                object.RequiresLineOfSight = false
-                                object.MaxActivationDistance = math.huge
-                            end)
-                            fireproximityprompt(object)
-                            task.wait(0.01)
+    while PickupEnabled and FarmModel do
+        local plantsFolder = FarmModel:FindFirstChild("Plants_Physical")
+        if plantsFolder then
+            for _, plant in next, plantsFolder:GetChildren() do
+                if plant:IsA("Model") then
+                    local pivot = plant:GetPivot().Position
+                    local playerPos = LocalPlayer.Character:GetPivot().Position
+                    local distance = (pivot - playerPos).Magnitude
+
+                    for _, obj in next, plant:GetDescendants() do
+                        if obj:IsA("ProximityPrompt") and distance < PickupRadius then
+                            -- Optional teleport to the plant
+                            LocalPlayer.Character:PivotTo(CFrame.new(pivot + Vector3.new(0, 3, 0)))
+
+                            -- Activate the prompt
+                            fireproximityprompt(obj)
+                            task.wait(0.1)
                         end
                     end
                 end
             end
         end
-        task.wait(0.2)
+        task.wait(0.5)
     end
 end)
