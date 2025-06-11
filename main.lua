@@ -1,868 +1,830 @@
------------------- SETTINGS ------------------
- 
+
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
-local PlayerGui = player.PlayerGui
-local character = player.Character or player.CharacterAdded:Wait()
 
-local InsertService = game:GetService("InsertService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local PathfindingService = game:GetService("PathfindingService")
+local blur = Instance.new("BlurEffect", Lighting)
+blur.Size = 0
+TweenService:Create(blur, TweenInfo.new(0.5), {Size = 24}):Play()
+
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "StellarLoader"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(1, 0, 1, 0)
+frame.BackgroundTransparency = 1
+
+local bg = Instance.new("Frame", frame)
+bg.Size = UDim2.new(1, 0, 1, 0)
+bg.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+bg.BackgroundTransparency = 1
+bg.ZIndex = 0
+TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 0.3}):Play()
+
+local word = "STELLAR"
+local letters = {}
+
+local function tweenOutAndDestroy()
+	for _, label in ipairs(letters) do
+		TweenService:Create(label, TweenInfo.new(0.3), {TextTransparency = 1, TextSize = 20}):Play()
+	end
+	TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+	TweenService:Create(blur, TweenInfo.new(0.5), {Size = 0}):Play()
+	wait(0.6)
+	screenGui:Destroy()
+	blur:Destroy()
+end
+
+for i = 1, #word do
+	local char = word:sub(i, i)
+
+	local label = Instance.new("TextLabel")
+	label.Text = char
+	label.Font = Enum.Font.GothamBlack
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 1 
+	label.TextTransparency = 1
+	label.TextScaled = false
+	label.TextSize = 30 
+	label.Size = UDim2.new(0, 60, 0, 60)
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.new(0.5, (i - (#word / 2 + 0.5)) * 65, 0.5, 0)
+	label.BackgroundTransparency = 1
+	label.Parent = frame
+
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 170, 255)), -- biru muda cerah
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 100, 160))   -- biru muda gelap
+	})
+	gradient.Rotation = 90
+	gradient.Parent = label
+
+	local tweenIn = TweenService:Create(label, TweenInfo.new(0.3), {TextTransparency = 0, TextSize = 60})
+	tweenIn:Play()
+
+	table.insert(letters, label)
+	wait(0.25)
+end
+
+wait(2)
+
+tweenOutAndDestroy()
+
+if not game:IsLoaded() then
+    print("Waiting for game to load...")
+    game.Loaded:Wait()
+    print("Loaded Game")
+end
+
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local VirtualUser = game:GetService("VirtualUser")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
 
-local humanoid = character:WaitForChild("Humanoid")
-local hrp = character:WaitForChild("HumanoidRootPart")
-local workspace = game:GetService("Workspace")
-local backpack = player:WaitForChild("Backpack")
-local playerGui = player:WaitForChild("PlayerGui")
-local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
+local LocalPlayer = Players.LocalPlayer
 
-local scriptEnabled = true
-
-local Window
-local IsBuyHoneyShop, IsPlaceEggs, IsOpenEggs, IsCollectHoney, IsAntiAfk, IsCraftItems
-local CollectHoneyPeriod, CraftItemsPeriod, BuyPetStockPeriod, BuyGearShopPeriod, BuySeedShopPeriod, HoneyShopPeriod, PlaceEggsPeriod, OpenEggsPeriod, AntiAfkPeriod
-local SelectedHoneyShopItems = {}
-local SelectedGearShopItems = {}
-local SelectedSeedShopItems = {}
-local SelectedPetStockEggs = {}
-local SellPetsConsole
-
-local collectHoneyTime
- 
------------------- MAIN -----------------
-player.CharacterAdded:Connect(function(char)
-	character = char
+-- Anti-AFK
+LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
 end)
------------------- HONEY EVENT ------------------
 
-function HandleHoneyCrafter()
-    local honeyCrafter = workspace.Interaction.UpdateItems.HoneyCrafter
+-- Get required data
+local egg_shop = require(ReplicatedStorage.Data.PetEggData)
+local seed_shop = require(ReplicatedStorage.Data.SeedData)
+local gear_shop = require(ReplicatedStorage.Data.GearData)
 
-    local honeyStation = honeyCrafter.HoneyCrafter_HoneyStation
-    local honeyStationPrompt = honeyStation.Barrel:FindFirstChild("HoneyCrafterPrompt_Honey", true)
-    if honeyStationPrompt and honeyStationPrompt.ActionText == "Submit Honey" then
-        print("Sumbit honey craft")
-        GameEvents.HoneyCrafterRemoteEvent:FireServer("SubmitHoney")
+-- Variables
+local selectedSeeds = {}
+local selectedGears = {}
+local selectedEggs = {}
+local selectedMutations = {}
+local seeds = {}
+local gears = {}
+local eggs = {}
+local mutations = {}
+
+-- Farm location
+local farm = nil
+for _, v in next, Workspace:FindFirstChild("Farm"):GetDescendants() do
+    if v.Name == "Owner" and v.Value == LocalPlayer.Name then
+        farm = v.Parent.Parent
+        break
+    end
+end
+
+-- Get items from shop data
+for i, v in next, seed_shop do
+    if v.StockChance > 0 then
+        table.insert(seeds, i)
+    end
+end
+
+for _, v in next, egg_shop do
+    if v.StockChance > 0 then
+        table.insert(eggs, v.EggName)
+    end
+end
+
+for _, v in next, gear_shop do
+    if v.StockChance > 0 then
+        table.insert(gears, v.GearName)
+    end
+end
+
+for _, v in next, ReplicatedStorage.Mutation_FX:GetChildren() do
+    table.insert(mutations, v.Name)
+end
+table.insert(mutations, "Gold")
+table.insert(mutations, "Rainbow")
+
+-- State variables
+local autoPlant = false
+local pickupAura = false
+local hatchAura = false
+local autoBuySeeds = false
+local autoBuyGears = false
+local autoBuyEggs = false
+local autoFavorite = false
+local autoSell = false
+local autoConvertPollinated = false
+local autoHoneyFarm = false
+
+-- Settings
+local pickupRange = 20
+local pickupDelay = 0.1
+local minWeight = 0.01
+local plantDelay = 0.1
+local favoriteDelay = 0.1
+local sellDelay = 10
+local plantPosition = nil
+local autoPlantMethod = "Player Position"
+
+-- Honey farm variables
+local pollinatedTools = {}
+local busy = false
+
+-- Functions
+local function updatePollinatedList()
+    pollinatedTools = {}
+    for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+        local weightObj = tool:FindFirstChild("Weight")
+        local weight = weightObj and weightObj:IsA("NumberValue") and weightObj.Value or 0
+
+        local favObj = tool:FindFirstChild("Favorite")
+        local isFav = favObj and favObj:IsA("BoolValue") and favObj.Value or false
+
+        if tool.Name:match("%[.-Pollinated.-%]") and weight >= 10 and not isFav then
+            table.insert(pollinatedTools, tool)
+        end
+    end
+end
+
+local function closestPet()
+    local pet = nil
+    local distance = math.huge
+
+    for _, v in next, Workspace:FindFirstChild("PetsPhysical"):GetChildren() do
+        if v:IsA("Part") and v:GetAttribute("OWNER") == LocalPlayer.Name and v:GetAttribute("UUID") then
+            local dist = (v:GetPivot().Position - LocalPlayer.Character:GetPivot().Position).Magnitude
+            if dist < distance then
+                distance = dist
+                pet = v
+            end
+        end
     end
 
-    local plantStation = honeyCrafter.HoneyCrafter_PlantStation
-    local plantStationPrompt = plantStation.Barrel:FindFirstChild("HoneyCrafterPrompt_Plant", true)
-    if plantStationPrompt and plantStationPrompt.ActionText == "Submit Plant" then
-        local requiredPlant
+    return pet
+end
 
-        for _, child in ipairs(plantStation:GetChildren()) do
-            local primaryPart = child.PrimaryPart
-            if not primaryPart then continue end
+local function startPickupAura()
+    if not pickupAura then return end
+    
+    task.spawn(function()
+        while pickupAura do
+            for _, v in next, farm:FindFirstChild("Plants_Physical"):GetChildren() do
+                if v:IsA("Model") and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    for _, v2 in next, v:GetDescendants() do
+                        if v2:IsA("ProximityPrompt") and v2.Parent.Parent:FindFirstChild("Weight") 
+                        and v2.Parent.Parent.Weight.Value > minWeight 
+                        and (v:GetPivot().Position - LocalPlayer.Character:GetPivot().Position).Magnitude < pickupRange then
+                            fireproximityprompt(v2)
+                            task.wait(pickupDelay)
+                        end
+                    end
+                end
+            end
+            task.wait()
+        end
+    end)
+end
 
-            local partName = child.PrimaryPart.Name
-            if not partName or partName ~= "Handle" then continue end
+local function startAutoPlant()
+    if not autoPlant then return end
+    
+    task.spawn(function()
+        while autoPlant do
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool") 
+            and LocalPlayer.Character:FindFirstChildOfClass("Tool"):GetAttribute("ItemType") == "Seed" then
+                
+                if autoPlantMethod == "Choosen Position" and plantPosition then
+                    ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Plant_RE"):FireServer(plantPosition, LocalPlayer.Character:FindFirstChildOfClass("Tool"):GetAttribute("ItemName"))
+                elseif autoPlantMethod == "Player Position" then
+                    ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Plant_RE"):FireServer(LocalPlayer.Character:GetPivot().Position, LocalPlayer.Character:FindFirstChildOfClass("Tool"):GetAttribute("ItemName"))
+                end
+                
+                task.wait(plantDelay)
+            end
+            task.wait()
+        end
+    end)
+end
 
-            requiredPlant = child.Name
+local function startHatchAura()
+    if not hatchAura then return end
+    
+    task.spawn(function()
+        while hatchAura do
+            for _, v in next, farm:FindFirstChild("Objects_Physical"):GetChildren() do
+                if v:IsA("Model") and v:GetAttribute("TimeToHatch") == 0 and LocalPlayer.Character 
+                and (v:GetPivot().Position - LocalPlayer.Character:GetPivot().Position).Magnitude < 20 then
+                    for _, v2 in next, v:FindFirstChildOfClass("Model"):GetChildren() do
+                        if v2:IsA("ProximityPrompt") and v2.Name == "ProximityPrompt" then
+                            fireproximityprompt(v2)
+                            task.wait(0.1)
+                        end
+                    end
+                end
+            end
+            task.wait()
+        end
+    end)
+end
+
+local function startAutoFavorite()
+    if not autoFavorite then return end
+    
+    task.spawn(function()
+        while autoFavorite do
+            for _, v in next, LocalPlayer:FindFirstChild("Backpack"):GetChildren() do
+                local seedModels = ReplicatedStorage:FindFirstChild("Seed_Models")
+                for _, v2 in next, seedModels:GetChildren() do
+                    if v:IsA("Tool") and not v:GetAttribute("Favorite") and v:GetAttribute("ItemName") == v2.Name 
+                    and v:FindFirstChild("Weight") and v.Weight.Value > minWeight then
+                        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Favorite_Item"):FireServer(v)
+                    elseif selectedMutations then
+                        for i, _ in next, selectedMutations do
+                            if v:IsA("Tool") and not v:GetAttribute("Favorite") and v:GetAttribute("ItemName") == v2.Name and v.Name:find(i) then
+                                ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Favorite_Item"):FireServer(v)
+                            end
+                        end
+                    end
+                end
+            end
+            task.wait(favoriteDelay)
+        end
+    end)
+end
+
+local function startAutoBuySeeds()
+    if not autoBuySeeds then return end
+    
+    task.spawn(function()
+        while autoBuySeeds do
+            for i, _ in next, selectedSeeds do
+                ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuySeedStock"):FireServer(i)
+            end
+            task.wait(1)
+        end
+    end)
+end
+
+local function startAutoBuyGears()
+    if not autoBuyGears then return end
+    
+    task.spawn(function()
+        while autoBuyGears do
+            for i, _ in next, selectedGears do
+                ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyGearStock"):FireServer(i)
+            end
+            task.wait(1)
+        end
+    end)
+end
+
+local function startAutoBuyEggs()
+    if not autoBuyEggs then return end
+    
+    task.spawn(function()
+        while autoBuyEggs do
+            local eggLocation = Workspace:FindFirstChild("NPCS"):FindFirstChild("Pet Stand"):FindFirstChild("EggLocations")
+            for i, v in next, eggLocation:GetChildren() do
+                for i2, _ in next, selectedEggs do
+                    if v.Name == i2 and not v:GetAttribute("RobuxEggOnly") then
+                        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyPetEgg"):FireServer(i - 3)
+                    end
+                end
+            end
+            task.wait(1)
+        end
+    end)
+end
+
+local function startAutoSell()
+    if not autoSell then return end
+    
+    task.spawn(function()
+        while autoSell do
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local old = LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame
+                LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = Workspace.Tutorial_Points.Tutorial_Point_2.CFrame
+                task.wait(0.2)
+                ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Sell_Inventory"):FireServer()
+                task.wait(0.2)
+                LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = old
+                task.wait(sellDelay)
+            end
+        end
+    end)
+end
+
+local function startHoneyFarm()
+    if not autoHoneyFarm then return end
+    
+    local jar = Workspace.Interaction.UpdateItems.HoneyEvent.HoneyCombpressor.Spout:WaitForChild("Jar")
+    
+    updatePollinatedList()
+    LocalPlayer.Backpack.ChildAdded:Connect(updatePollinatedList)
+    LocalPlayer.Backpack.ChildRemoved:Connect(updatePollinatedList)
+
+    local proximityPrompt = jar:FindFirstChild("HoneyCombpressorPrompt")
+    if proximityPrompt then
+        ReplicatedStorage.GameEvents.HoneyMachineService_RE:FireServer("MachineInteract")
+    end
+
+    RunService.RenderStepped:Connect(function()
+        if not autoHoneyFarm or busy then return end
+        busy = true
+
+        local statusText = Workspace.Interaction.UpdateItems.HoneyEvent.HoneyCombpressor.Sign.SurfaceGui.TextLabel.Text
+
+        if (not statusText:match("^%d+:0%d$") and not statusText:match("^%d+:%d%d$")) and not statusText:find("READY") then
+            if #pollinatedTools > 0 then
+                LocalPlayer.Character.Humanoid:EquipTool(pollinatedTools[math.random(#pollinatedTools)])
+            end
+            ReplicatedStorage.GameEvents.HoneyMachineService_RE:FireServer("MachineInteract")
         end
 
-        SumbitPlantForCraft(requiredPlant)
-    end
+        task.wait(0.5)
+        busy = false
+    end)
 
-    -- GameEvents.HoneyCrafterRemoteEvent:FireServer("SubmitHeldPlant")
-    --GameEvents.HoneyCrafterRemoteEvent("CraftItem")
-end
-
-function GetPollinatedPlantWithType(plantType)
-    local plant
-
-    for _, item in ipairs(backpack:GetChildren()) do
-        local itemName = item:GetAttribute("ItemName")
-        if not itemName or itemName ~= plantType then continue end
-        if not string.find(item.Name, "Pollinated") then continue end
-        plant = item
-    end
-
-    return plant
-end
-
-function HasPlantWithType(plantType)
-    local has = false
-
-    local farm = GetFarm()
-    local plantsPhysical = farm.Important.Plants_Physical
-
-    for _, child in ipairs(plantsPhysical:GetChildren()) do
-        if child.Name ~= plantType then continue end
-        has = true
-    end
-
-    return has
-end
-
-function SumbitPlantForCraft(plant)
-    local requiredPlant = GetPollinatedPlantWithType(plant)
-
-    if requiredPlant then
-        GameEvents.HoneyCrafterRemoteEvent:FireServer("SubmitHeldPlant")
-        print("required plant has in inventory, submit for craft")
-        return
-    end
-
-    local hasPlant = HasPlantWithType(plant)
-
-    if hasPlant then
-        print("has plant on farm ")
-    end
-
-    local seedShopItems = GetSeedShopItems()
-    local stock = seedShopItems[plant]
-
-    if stock == 0 then
-        print("stock of required plant for craft is empty")
-        return
-    end
-
-    GameEvents.BuySeedStock:FireServer(plant)
-end
- 
-function HandleCombpressor()
-	local combpressor = workspace.HoneyEvent.HoneyCombpressor
- 
-	local jarPrompt = combpressor.Spout.Jar:FindFirstChild("HoneyCombpressorPrompt")
-	if jarPrompt and jarPrompt.ActionText == "Collect Honey" then
-		print("Collect Honey")
-		collectHoneyTime = tick()
-		ReplicatedStorage.GameEvents.HoneyMachineService_RE:FireServer("MachineInteract")
-	end
- 
-	local onettPrompt = combpressor.Onett:FindFirstChild("HoneyCombpressorPrompt")
-	if onettPrompt and onettPrompt.ActionText == "Give Plant" then
-		local pollinatedFruit = FindPollinatedFruitInBackpack()
-
-		if pollinatedFruit then
-			print("Give Plant")
-			GivePlant(onettPrompt, pollinatedFruit)
-		else
-			local pollinatedFruits = GetPollinatedFruits()
-			local pollinatedFruitsSize = TableSize(pollinatedFruits)
-
-			if pollinatedFruitsSize < 1 then
-				print("Pollinated fruits on farm none exists")
-			end
-
-			if pollinatedFruitsSize > 0 then
-				print("Go to collect pollinated")
-				CollectPollinated(pollinatedFruits)
-			end
-		end
-	end
-end
-
-function FindPollinatedFruitInBackpack()
-	for _, item in ipairs(backpack:GetChildren()) do
-		if not string.find(item.Name, "Pollinated") then continue end
-        return item
-	end
-
-	return nil
-end
- 
-function GivePlant(prompt, item)
-	ResetMainSlot()
-	item.Parent = character
-	ReplicatedStorage.GameEvents.HoneyMachineService_RE:FireServer("MachineInteract")
-end
-
-function GetHoneyShopItems()
-	local honeyShop = PlayerGui.HoneyEventShop_UI
-	local frames = honeyShop.Frame.ScrollingFrame
-
-	local items = {}
-
-	for _, item in ipairs(frames:GetChildren()) do
-		local mainFrame = item:FindFirstChild("Main_Frame")
-		if not mainFrame then continue end
-        local stockText = mainFrame.Stock_Text 
-
-        items[item.Name] = tonumber(stockText.Text:match("%d+"))
-	end
-
-	return items
-end
- 
-function BuyHoneyShop()
-    local honeyShopItems = GetHoneyShopItems()
-
-	for good, _ in pairs(SelectedHoneyShopItems) do
-        local stock = honeyShopItems[good]
-
-        for i = 1, stock do
-		    GameEvents.BuyEventShopStock:FireServer(good)
+    jar.ChildAdded:Connect(function(child)
+        if autoHoneyFarm and child:IsA("ProximityPrompt") and child.Name == "HoneyCombpressorPrompt" then
+            ReplicatedStorage.GameEvents.HoneyMachineService_RE:FireServer("MachineInteract")
+            task.wait(1)
         end
-
-        if stock == 0 then continue end
-
-		print(string.format("Buy in shop %s x%d", good, stock))
-	end
+    end)
 end
 
------------------- SEED ----------------
-function BuySeedShop()
-    local seedShopItems = GetSeedShopItems()
+local ui = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
-    for good, _ in pairs(SelectedSeedShopItems) do
-        local stock = seedShopItems[good]
+function gradient(text, startColor, endColor)
+    local result = ""
+    local length = #text
 
-        for i = 1, stock do
-		    GameEvents.BuySeedStock:FireServer(good)
-        end
+    for i = 1, length do
+        local t = (i - 1) / math.max(length - 1, 1)
+        local r = math.floor((startColor.R + (endColor.R - startColor.R) * t) * 255)
+        local g = math.floor((startColor.G + (endColor.G - startColor.G) * t) * 255)
+        local b = math.floor((startColor.B + (endColor.B - startColor.B) * t) * 255)
 
-        if stock == 0 then continue end
-
-		print(string.format("Buy in shop %s x%d", good, stock))
-	end
-end
-
- 
------------------- FARM ------------------
- 
-function GetFarm()
-	local farms = workspace:FindFirstChild("Farm")
-	if not farms then return nil end
- 
-	for _, farm in ipairs(farms:GetChildren()) do
-		local important = farm:FindFirstChild("Important")
-		local owner = important and important.Data and important.Data:FindFirstChild("Owner")
-        if not owner or owner.Value ~= player.name then continue end
-
-        return farm
-	end
-end
- 
-function GetPollinatedFruits()
-	local fruits = {}
-
-	local farm = GetFarm()
-	if not farm then return fruits end
- 
-	local plants = farm.Important.Plants_Physical
-
-	for _, plant in ipairs(plants:GetChildren()) do
-		local fruitGroup = plant:FindFirstChild("Fruits")
-        if not fruitGroup then continue end
-
-        for _, fruit in ipairs(fruitGroup:GetChildren()) do
-            if not fruit:GetAttribute("Pollinated") then continue end
-
-            local prompt = fruit:FindFirstChild("ProximityPrompt", true)
-            if not prompt or not prompt.Enabled or not fruit.PrimaryPart then continue end
-
-            fruits[fruit] = prompt
-		end
-	end
-
-	return fruits
-end
- 
-function CollectPollinated(fruits)
-    for fruit, prompt in pairs(fruits) do
-		local ByteNetReliable = ReplicatedStorage.ByteNetReliable
-
-		ByteNetReliable:FireServer(
-			buffer.fromstring("\001\001\000\001"),
-			{ fruit }
-		)
+        local char = text:sub(i, i)
+        result = result .. "<font color=\"rgb(" .. r ..", " .. g .. ", " .. b .. ")\">" .. char .. "</font>"
     end
+
+    return result
 end
 
-function GetSeedShopItems()
-	local gearShop = PlayerGui.Seed_Shop
-	local frames = gearShop.Frame.ScrollingFrame
+local Confirmed = false
 
-	local items = {}
-
-	for _, item in ipairs(frames:GetChildren()) do
-		local mainFrame = item:FindFirstChild("Main_Frame")
-		if not mainFrame then continue end
-        local stockText = mainFrame.Stock_Text 
-
-        items[item.Name] = tonumber(stockText.Text:match("%d+"))
-	end
-
-	return items
-end
- 
------------------- PETS ------------------
-
-function OpenEggs()
-	local farm = GetFarm()
-	if not farm then return end
-
-	local objects = farm.Important.Objects_Physical
- 
-	for _, obj in ipairs(objects:GetChildren()) do
-        if obj:GetAttribute("OBJECT_TYPE") ~= "PetEgg" or obj:GetAttribute("TimeToHatch") ~= 0 then continue end
-
-        print("Open egg " .. obj.Name)
-        OpenEgg(obj)
-	end
-end
-
-function PlaceEggs()
-	ResetMainSlot()
-
-	local farm = GetFarm()
-	if not farm then return end
-
-	local placedEggs = {}
-	local objects = farm.Important.Objects_Physical
- 
-	for _, obj in ipairs(objects:GetChildren()) do
-        if obj:GetAttribute("OBJECT_TYPE") ~= "PetEgg" then continue end
-        table.insert(placedEggs, obj)
-	end
-
-	if #placedEggs > 3 then
-		print("Eggs on farm is max")
-	end
-
-	if #placedEggs < 4 then
-		local eggsToPlace = 4 - #placedEggs
-		local eggs = GetEggs()
-
-		for _, egg in ipairs(eggs) do
-			if eggsToPlace < 1 then break end
-			local count = egg:GetAttribute("Uses")
-
-			for i = 1, math.min(count, eggsToPlace) do
-				print("Placing egg " .. egg.Name)
-				PlaceEgg(egg)
-				eggsToPlace -= 1
-			end
-		end
-	end
-end
- 
-function PlaceEgg(egg)
-	local farm = GetFarm()
-	if not farm then return end
- 
-	local box = farm.Important.Plant_Locations:FindFirstChild("Can_Plant")
-	if not box then return end
-
-	local angle = math.rad(math.random(0, 360))
-	local radius = math.random(1, 50)
-	local pos = box.Position + Vector3.new(math.cos(angle)*radius, 0, math.sin(angle)*radius)
- 
-	ResetMainSlot()
-	egg.Parent = character
- 
-    GameEvents.PetEggService:FireServer("CreateEgg", pos)
-end
- 
-function OpenEgg(egg)
-	SellPets()
-	GameEvents.PetEggService:FireServer("HatchPet", egg)
-end
- 
-function SellPets()
-	for _, item in ipairs(backpack:GetChildren()) do
-		for name in string.gmatch(SellPetsConsole.Value, "[^\r\n]+") do
-            if not string.find(item.Name, name) then continue end
-
-            item.Parent = character
-            GameEvents.SellPet_RE:FireServer(item)
-            print("Sell pet " .. item.Name)
-		end
-	end
-end
-
-function GetPetsCount(petName)
-	local count = 0
-
-	for _, item in ipairs(backpack:GetChildren()) do
-        if not string.find(item.Name, petName) then continue end
-		count += 1
-	end
-
-	return count
-end
-
-function GetEggs()
-	local eggs = {}
-
-	for _, item in ipairs(backpack:GetChildren()) do
-		if not string.find(item.Name, "Egg") then continue end
-		table.insert(eggs, item)
-	end
-
-	return eggs
-end
-
-function GetPlacedEggs()
-	local placedEggs = {}
-
-	local farm = GetFarm()
-	if not farm then return end
-
-	local objects = farm.Important.Objects_Physical
- 
-	for _, obj in ipairs(objects:GetChildren()) do
-		if obj:GetAttribute("OBJECT_TYPE") ~= "PetEgg" then continue end
-		local timeToHatch = obj:GetAttribute("TimeToHatch") 
-		placedEggs[obj] = timeToHatch
-	end
-
-	return placedEggs
-end
-
-function GetPetStockEggs()
-	local items = ReplicatedStorage.Assets.Models.EggModels
-
-	local names = {}
-
-	for _, item in ipairs(items:GetChildren()) do
-		table.insert(names, item.Name)
-	end
-
-	return names
-end
-
-function BuyPetStock()
-	local children = workspace.NPCS:WaitForChild("Pet Stand").EggLocations:GetChildren()
-
-	for i = #children, 1, -1 do
-        if children[i]:IsA("Model") then continue end
-	    table.remove(children, i)
-	end
-
-	for index, egg in ipairs(children) do
-		if not SelectedPetStockEggs[egg.Name] then continue end
-        GameEvents.BuyPetEgg:FireServer(index)
-	end
-end
-
------------------- GEAR --------------------
-function GetGearShopItems()
-	local gearShop = PlayerGui.Gear_Shop
-	local frames = gearShop.Frame.ScrollingFrame
-
-	local items = {}
-
-	for _, item in ipairs(frames:GetChildren()) do
-		local mainFrame = item:FindFirstChild("Main_Frame")
-		if not mainFrame then continue end
-        local stockText = mainFrame.Stock_Text 
-
-        items[item.Name] = tonumber(stockText.Text:match("%d+"))
-	end
-
-	return items
-end
-
-function BuyGearShop()
-    local gearShopItems = GetGearShopItems()
-
-    for good, _ in pairs(SelectedGearShopItems) do
-        local stock = gearShopItems[good]
-
-        for i = 1, stock do
-		    GameEvents.BuyGearStock:FireServer(good)
-        end
-
-        if stock == 0 then continue end
-
-		print(string.format("Buy in shop %s x%d", good, stock))
-	end
-end
- 
------------------- UTILS ------------------
-function AntiAfk()
-	VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-	wait(0.1)
-	VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-end
- 
-function ResetMainSlot()
-	for _, item in ipairs(character:GetChildren()) do
-        if not item:IsA("Tool") then continue end
-        item.Parent = backpack
-	end
-end
-
-function Loop(Toggle: Checkbox?, Func, period)
-	coroutine.wrap(function()
-		local lastRun = tick()
-
-		while scriptEnabled do
-			if Toggle ~= nil and Toggle.Value == false then
-				task.wait(0.1)
-				continue
-			end
-
-			local currentPeriod
-
-			if typeof(period) == "table" then
-				currentPeriod = period.Value
-			elseif typeof(period) == "number" then
-				currentPeriod = period
-			else
-				currentPeriod = 1
-			end
-
-			if tick() - lastRun >= currentPeriod then
-				local success, err = pcall(Func)
-				if not success then
-					print(tostring(err))
-				end
-				lastRun = tick()
-			end
-
-			task.wait(0.1)
-		end
-	end)()
-end
-
-function FormatTime(seconds)
-	local h = math.floor(seconds / 3600)
-	local m = math.floor((seconds % 3600) / 60)
-	local s = math.floor(seconds % 60)
-
-	local parts = {}
-
-	if h > 0 then
-		table.insert(parts, h .. "h")
-	end
-	if m > 0 then
-		table.insert(parts, m .. "m")
-	end
-	if s > 0 or #parts == 0 then
-		table.insert(parts, s .. "s")
-	end
-
-	return table.concat(parts, " ")
-end
-
-function TableSize(tbl)
-	local count = 0
-	for _ in pairs(tbl) do
-		count += 1
-	end
-	return count
-end
-
--------------------------GUI-----------------------
-local ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
-local PrefabsId = "rbxassetid://" .. ReGui.PrefabsId
-
-local Accent = {
-    DarkGreen = Color3.fromRGB(45, 95, 25),
-    Green = Color3.fromRGB(69, 142, 40),
-    Brown = Color3.fromRGB(26, 20, 8),
-}
-
-ReGui:Init({
-	Prefabs = InsertService:LoadLocalAsset(PrefabsId)
-})
-ReGui:DefineTheme("GardenTheme", {
-	WindowBg = Accent.Brown,
-	TitleBarBg = Accent.DarkGreen,
-	TitleBarBgActive = Accent.Green,
-    ResizeGrab = Accent.DarkGreen,
-    FrameBg = Accent.DarkGreen,
-    FrameBgActive = Accent.Green,
-	CollapsingHeaderBg = Accent.Green,
-    ButtonsBg = Accent.Green,
-    CheckMark = Accent.Green,
-    SliderGrab = Accent.Green,
+ui:Popup({
+    Title = "Stellar Grow A Garden",
+    Icon = "info",
+    Content = "Please join our discord to " .. gradient("Stellar", Color3.fromRGB(150, 200, 255), Color3.fromRGB(50, 100, 200)) .. " support us",
+    Buttons = {
+        {
+            Title = "Cancel",
+            Callback = function() end,
+            Variant = "Secondary",
+        },
+        {
+            Title = "Continue",
+            Icon = "arrow-right",
+            Callback = function() Confirmed = true end,
+            Variant = "Primary",
+        }
+    }
 })
 
-function Exit()
-	scriptEnabled = false
-	Window:Remove()
-end
+repeat wait() until Confirmed
 
-function FeaturesWindow()
-	Window = ReGui:TabsWindow({
-		Title = "Features",
-		Theme = "GardenTheme",
-		Size = UDim2.fromOffset(300, 400),
-		NoResize = true,
-		NoClose = true,
-	})
+--
+-- Buat window utama
+local win = ui:CreateWindow({
+    Title = "Stellar",
+    Icon = "leaf",
+    Folder = nil,
+    Size = UDim2.fromOffset(580, 400),
+    Transparent = true,
+    Theme = "Dark",
+    SideBarWidth = 200,
+    Background = "",
+})
 
-	local PetTab = Window:CreateTab({Name="Pet"})
+local InformationTab = win:Tab({
+    Title = "Information",
+    Icon = "info",
+})
+InformationTab:Paragraph({
+    Title = "x2zu [ Stellar ]",
+    Desc = "Click below and paste to your browser to join our discord!"
+})
 
-	PetTab:Separator({Text="Place"})
-
-	IsPlaceEggs = PetTab:Checkbox({
-		Value = false,
-		Label = "Place Eggs"
-	})
-	PlaceEggsPeriod = PetTab:InputInt({
-		Label = "Period",
-		Value = 60,
-		Minimum = 1,
-		Maximum = 1000000
-	})
-
-	PetTab:Separator({Text="Open"})
-
-	IsOpenEggs = PetTab:Checkbox({
-		Value = false,
-		Label = "Open Eggs"
-	})
-	OpenEggsPeriod = PetTab:InputInt({
-		Label = "Period",
-		Value = 60,
-		Minimum = 1,
-		Maximum = 1000000
-	})
-
-	PetTab:Separator({Text="Auto Sell"})
-
-	SellPetsConsole = PetTab:Console({
-		LineNumbers = true,
-		Value = "Hedgehog\nFrog\nMole\nMouse\nSquirrel\nAnt"
-	})
-
-	PetTab:Button({
-		Text = "Sell Pets",
-		Callback = SellPets,
-	})
-
-	PetTab:Separator({Text="Egg Stock"})
-
-	for _, item in ipairs(GetPetStockEggs()) do
-		PetTab:Checkbox({
-			Value = false,
-			Label = item,
-			Callback = function(self, Value: boolean)
-				if (Value) then
-					SelectedPetStockEggs[item] = true
-				else
-					SelectedPetStockEggs[item] = nil
-				end
-			end
-		})
-	end
-
-	BuyPetStockPeriod = PetTab:InputInt({
-		Label = "Period",
-		Value = 300,
-		Minimum = 1,
-		Maximum = 1000000
-	})
-
-    local GearTab = Window:CreateTab({Name="Gear"})
-
-    BuyGearShopPeriod = GearTab:InputInt({
-		Label = "Period",
-		Value = 1,
-		Minimum = 1,
-		Maximum = 1000000
-	})
-
-    for item, _ in pairs(GetGearShopItems()) do
-		GearTab:Checkbox({
-			Value = false,
-			Label = item,
-			Callback = function(self, Value: boolean)
-				if (Value) then
-					SelectedGearShopItems[item] = true
-				else
-					SelectedGearShopItems[item] = nil
-				end
-			end
-		})
-	end
-
-    
-    local SeedTab = Window:CreateTab({Name="Seed"})
-
-    BuySeedShopPeriod = SeedTab:InputInt({
-		Label = "Period",
-		Value = 1,
-		Minimum = 1,
-		Maximum = 1000000
-	})
-
-    for item, _ in pairs(GetSeedShopItems()) do
-		SeedTab:Checkbox({
-			Value = false,
-			Label = item,
-			Callback = function(self, Value: boolean)
-				if (Value) then
-					SelectedSeedShopItems[item] = true
-				else
-					SelectedSeedShopItems[item] = nil
-				end
-			end
-		})
-	end
-
-	local HoneyEventTab = Window:CreateTab({Name="Honey Event"})
-
-	HoneyEventTab:Separator({Text="Combpressor"})
-
-	IsCollectHoney = HoneyEventTab:Checkbox({
-		Value = false,
-		Label = "Collect Honey"
-	})
-
-	CollectHoneyPeriod = HoneyEventTab:InputInt({
-		Label = "Period",
-		Value = 1,
-		Minimum = 1,
-		Maximum = 1000000
-	})
-
-    HoneyEventTab:Separator({Text="Crafter"})
-
-    
-	IsCraftItems = HoneyEventTab:Checkbox({
-		Value = false,
-		Label = "Craft Items"
-	})
-
-	CraftItemsPeriod = HoneyEventTab:InputInt({
-		Label = "Period",
-		Value = 1,
-		Minimum = 1,
-		Maximum = 1000000
-	})
-
-	HoneyEventTab:Separator({Text="Honey Shop"})
-
-	for item, _ in pairs(GetHoneyShopItems()) do
-		HoneyEventTab:Checkbox({
-			Value = false,
-			Label = item,
-			Callback = function(self, Value: boolean)
-				if (Value) then
-					SelectedHoneyShopItems[item] = true
-				else
-					SelectedHoneyShopItems[item] = nil
-				end
-			end
-		})
-	end
-
-	HoneyShopPeriod = HoneyEventTab:InputInt({
-		Label = "Period",
-		Value = 60,
-		Minimum = 1,
-		Maximum = 1000000
-	})
-
-	local OtherTab = Window:CreateTab({Name="Other"})
-	IsAntiAfk = OtherTab:Checkbox({
-		Value = false,
-		Label = "Anti-AFK",
-	})
-
-	AntiAfkPeriod = OtherTab:InputInt({
-		Label = "Period",
-		Value = 60,
-		Minimum = 1,
-		Maximum = 1000000
-	})
-
-	OtherTab:Button({
-		Text = "Show Statistic",
-		Callback = ShowStatistic
-	})
-
-    OtherTab:Separator({Text="Fps"})
-    
-	local fpsInput = OtherTab:InputInt({
-		Label = "Fps",
-		Value = 60,
-		Minimum = 1,
-		Maximum = 144
-	})
-
-    OtherTab:Button({
-		Text = "Set",
-		Callback = function()
-            setfpscap(fpsInput.Value)
+InformationTab:Button({
+    Title = "Copy Link Discord",
+    Locked = false,
+    Callback = function()
+        local discordLink = "https://discord.gg/FmMuvkaWvG"
+        if setclipboard then
+            setclipboard(discordLink)
+            print("Discord link copied to clipboard!")
+        else
+            warn("setclipboard function not available in this executor.")
         end
-	})
+    end
+})
 
-	OtherTab:Button({
-		Text = "Exit",
-		Callback = Exit
-	})
-end
+-- Main Tab
+local mainTab = win:Tab({
+    Title = "Farming",
+    Icon = "sprout",
+})
 
-function ShowStatistic()
-	local ModalWindow = Window:PopupModal({
-		Title = "Statistic",
-	})
+mainTab:Section({
+    Title = "Plant Management",
+    TextXAlignment = "Left",
+    TextSize = 17,
+})
 
-	ModalWindow:Separator({Text = "Favorited Pets"})
+mainTab:Toggle({
+    Title = "Pickup Aura",
+    Type = "Toggle",
+    Default = false,
+    Callback = function(state)
+        pickupAura = state
+        if state then
+            startPickupAura()
+        end
+    end
+})
 
-	local featurePets = { "Raccoon", "Queen Bee" }
+mainTab:Slider({
+    Title = "Pickup Range",
+    Step = 1,
+    Value = {
+        Min = 5,
+        Max = 50,
+        Default = pickupRange,
+    },
+    Callback = function(value)
+        pickupRange = value
+    end
+})
 
-	for _, featurePet in ipairs(featurePets) do
-		local count = GetPetsCount(featurePet)
-		ModalWindow:Label({
-			Text = string.format("%s x%d", featurePet, count)
-		})
-	end
+mainTab:Slider({
+    Title = "Pickup Delay",
+    Step = 0.1,
+    Value = {
+        Min = 0.1,
+        Max = 5,
+        Default = pickupDelay,
+    },
+    Callback = function(value)
+        pickupDelay = value
+    end
+})
 
-	ModalWindow:Separator({Text = "Eggs in Backpack"})
-	
-	for _, egg in ipairs(GetEggs()) do
-		ModalWindow:Label({
-			Text = egg.Name
-		})
-	end
+mainTab:Toggle({
+    Title = "Auto Plant",
+    Type = "Toggle",
+    Default = false,
+    Callback = function(state)
+        autoPlant = state
+        if state then
+            startAutoPlant()
+        end
+    end
+})
 
-	ModalWindow:Separator({Text = "Placed eggs"})
-	
-	for egg, timeToHatch in pairs(GetPlacedEggs()) do
-		local name = egg:GetAttribute("EggName")
-		local readableTime = FormatTime(timeToHatch)
-		ModalWindow:Label({
-			Text = string.format("%s %s", name, readableTime)
-		})
-	end
+mainTab:Dropdown({
+    Title = "Plant Method",
+    Values = {"Player Position", "Choosen Position"},
+    Value = autoPlantMethod,
+    Callback = function(option)
+        autoPlantMethod = option
+    end
+})
 
-	ModalWindow:Separator({Text = "Event"})
+mainTab:Button({
+    Title = "Set Plant Position",
+    Locked = false,
+    Callback = function()
+        if LocalPlayer.Character then
+            plantPosition = LocalPlayer.Character:GetPivot().Position
+        end
+    end
+})
 
-	local lastCollectHoney
+mainTab:Toggle({
+    Title = "Hatch Aura",
+    Type = "Toggle",
+    Default = false,
+    Callback = function(state)
+        hatchAura = state
+        if state then
+            startHatchAura()
+        end
+    end
+})
 
-	if collectHoneyTime then
-		lastCollectHoney = FormatTime(tick() - collectHoneyTime)
-	else
-		lastCollectHoney = "Never"
-	end
+-- Shop Tab
+local shopTab = win:Tab({
+    Title = "Shop",
+    Icon = "shopping-cart",
+})
 
-	ModalWindow:Label({
-		Text = string.format("Last Collect Honey: %s ago", lastCollectHoney)
-	})
+shopTab:Section({
+    Title = "Auto Buy",
+    TextXAlignment = "Left",
+    TextSize = 17,
+})
 
-	local pollinatedFruits = GetPollinatedFruits()
+shopTab:Toggle({
+    Title = "Auto Buy Seeds",
+    Type = "Toggle",
+    Default = false,
+    Callback = function(state)
+        autoBuySeeds = state
+        if state then
+            startAutoBuySeeds()
+        end
+    end
+})
 
-	ModalWindow:Label({
-		Text = string.format("Pollinated Fruits: %d", TableSize(pollinatedFruits))
-	})
+shopTab:Dropdown({
+    Title = "Select Seeds",
+    Values = seeds,
+    Value = {},
+    Multi = true,
+    Callback = function(options)
+        selectedSeeds = {}
+        for option, selected in pairs(options) do
+            if selected then
+                selectedSeeds[option] = true
+            end
+        end
+    end
+})
 
-	ModalWindow:Button({
-		Text = "Close",
-		Callback = function()
-			ModalWindow:ClosePopup()
-		end
-	})
-end
+shopTab:Toggle({
+    Title = "Auto Buy Gears",
+    Type = "Toggle",
+    Default = false,
+    Callback = function(state)
+        autoBuyGears = state
+        if state then
+            startAutoBuyGears()
+        end
+    end
+})
 
-FeaturesWindow()
+shopTab:Dropdown({
+    Title = "Select Gears",
+    Values = gears,
+    Value = {},
+    Multi = true,
+    Callback = function(options)
+        selectedGears = {}
+        for option, selected in pairs(options) do
+            if selected then
+                selectedGears[option] = true
+            end
+        end
+    end
+})
 
--------------LOOP-------------
-Loop(IsAntiAfk, AntiAfk, AntiAfkPeriod)
-Loop(nil, BuyHoneyShop, HoneyShopPeriod)
-Loop(nil, BuyGearShop, BuyGearShopPeriod)
-Loop(nil, BuySeedShop, BuySeedShopPeriod)
-Loop(nil, BuyPetStock, BuyPetStockPeriod)
-Loop(isOpenEggs, OpenEggs, OpenEggsPeriod)
-Loop(IsPlaceEggs, PlaceEggs, PlaceEggsPeriod)
-Loop(IsCollectHoney, HandleCombpressor, CollectHoneyPeriod)
-Loop(IsCraftItems, HandleHoneyCrafter, CraftItemsPeriod)
+shopTab:Toggle({
+    Title = "Auto Buy Eggs",
+    Type = "Toggle",
+    Default = false,
+    Callback = function(state)
+        autoBuyEggs = state
+        if state then
+            startAutoBuyEggs()
+        end
+    end
+})
+
+shopTab:Dropdown({
+    Title = "Select Eggs",
+    Values = eggs,
+    Value = {},
+    Multi = true,
+    Callback = function(options)
+        selectedEggs = {}
+        for option, selected in pairs(options) do
+            if selected then
+                selectedEggs[option] = true
+            end
+        end
+    end
+})
+
+-- Inventory Tab
+local inventoryTab = win:Tab({
+    Title = "Inventory",
+    Icon = "package",
+})
+
+inventoryTab:Section({
+    Title = "Management",
+    TextXAlignment = "Left",
+    TextSize = 17,
+})
+
+inventoryTab:Toggle({
+    Title = "Auto Favorite",
+    Type = "Toggle",
+    Default = false,
+    Callback = function(state)
+        autoFavorite = state
+        if state then
+            startAutoFavorite()
+        end
+    end
+})
+
+inventoryTab:Slider({
+    Title = "Min Weight",
+    Step = 0.01,
+    Value = {
+        Min = 0.01,
+        Max = 100,
+        Default = minWeight,
+    },
+    Callback = function(value)
+        minWeight = value
+    end
+})
+
+inventoryTab:Dropdown({
+    Title = "Favorite Mutations",
+    Values = mutations,
+    Value = {},
+    Multi = true,
+    Callback = function(options)
+        selectedMutations = {}
+        for option, selected in pairs(options) do
+            if selected then
+                selectedMutations[option] = true
+            end
+        end
+    end
+})
+
+inventoryTab:Toggle({
+    Title = "Auto Sell",
+    Type = "Toggle",
+    Default = false,
+    Callback = function(state)
+        autoSell = state
+        if state then
+            startAutoSell()
+        end
+    end
+})
+
+inventoryTab:Button({
+    Title = "Sell All Now",
+    Locked = false,
+    Callback = function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local old = LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame
+            LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = Workspace.Tutorial_Points.Tutorial_Point_2.CFrame
+            task.wait(0.2)
+            ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Sell_Inventory"):FireServer()
+            task.wait(0.2)
+            LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = old
+        end
+    end
+})
+
+-- Event Tab
+local eventTab = win:Tab({
+    Title = "Event",
+    Icon = "star",
+})
+
+eventTab:Section({
+    Title = "Honey Farm",
+    TextXAlignment = "Left",
+    TextSize = 17,
+})
+
+eventTab:Toggle({
+    Title = "Auto Honey Farm",
+    Type = "Toggle",
+    Default = false,
+    Callback = function(state)
+        autoHoneyFarm = state
+        if state then
+            startHoneyFarm()
+        end
+    end
+})
+
+eventTab:Button({
+    Title = "Teleport to Event",
+    Locked = false,
+    Callback = function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = Workspace.NightEvent.OwlNPCTree["26"].Part.CFrame + Vector3.new(0, 5, 0)
+        end
+    end
+})
+
+-- Pet Tab
+local petTab = win:Tab({
+    Title = "Pets",
+    Icon = "heart",
+})
+
+petTab:Section({
+    Title = "Pet Management",
+    TextXAlignment = "Left",
+    TextSize = 17,
+})
+
+petTab:Button({
+    Title = "Feed Closest Pet",
+    Locked = false,
+    Callback = function()
+        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        if not tool then return end
+        
+        local pet = closestPet()
+        if not pet then return end
+        
+        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("ActivePetService"):FireServer("Feed", pet:GetAttribute("UUID"))
+    end
+})
+
+-- Misc Tab
+local miscTab = win:Tab({
+    Title = "Misc",
+    Icon = "settings",
+})
+
+miscTab:Section({
+    Title = "Utilities",
+    TextXAlignment = "Left",
+    TextSize = 17,
+})
+
+miscTab:Button({
+    Title = "Rejoin Server",
+    Locked = false,
+    Callback = function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end
+})
+
+miscTab:Button({
+    Title = "Unfavorite All",
+    Locked = false,
+    Callback = function()
+        for _, v in next, LocalPlayer:FindFirstChild("Backpack"):GetChildren() do
+            if v:GetAttribute("Favorite") then
+                ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Favorite_Item"):FireServer(v)
+            end
+        end
+    end
+})
