@@ -1,502 +1,493 @@
--- Load Rayfield library
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-local Window = Rayfield:CreateWindow({
-    Name = "Mochi Hub",
-    Icon = 0,
-    LoadingTitle = "Mochi Hub",
-    LoadingSubtitle = "by Him",
-    Theme = "Default",
-    DisableRayfieldPrompts = false,
-    DisableBuildWarnings = false,
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = nil,
-        FileName = "Big Hub"
-    },
-    Discord = {
-        Enabled = false,
-        Invite = "noinvitelink",
-        RememberJoins = true
-    },
-    KeySystem = false,
-    KeySettings = {
-        Title = "Untitled",
-        Subtitle = "Key System",
-        Note = "No method of obtaining the key is provided",
-        FileName = "Key",
-        SaveKey = true,
-        GrabKeyFromSite = false,
-        Key = {"Hello"}
-    }
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Articles-Hub/ROBLOXScript/refs/heads/main/Library/LinoriaLib/Test.lua"))()
+local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/Articles-Hub/ROBLOXScript/refs/heads/main/Library/LinoriaLib/addons/ThemeManagerCopy.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/Articles-Hub/ROBLOXScript/refs/heads/main/Library/LinoriaLib/addons/SaveManagerCopy.lua"))()
+local Options = Library.Options
+local Toggles = Library.Toggles
+
+function Notification(Message, Time)
+if _G.ChooseNotify == "Obsidian" then
+Library:Notify(Message, Time or 5)
+elseif _G.ChooseNotify == "Roblox" then
+game:GetService("StarterGui"):SetCore("SendNotification",{Title = "Error",Text = Message,Icon = "rbxassetid://7733658504",Duration = Time or 5})
+end
+if _G.NotificationSound then
+        local sound = Instance.new("Sound", workspace)
+            sound.SoundId = "rbxassetid://4590662766"
+            sound.Volume = _G.VolumeTime or 2
+            sound.PlayOnRemove = true
+            sound:Destroy()
+        end
+    end
+
+Library:SetDPIScale(85)
+
+local Window = Library:CreateWindow({
+    Title = "Forsake",
+    Center = true,
+    AutoShow = true,
+    Resizable = true,
+    Footer = "Omega X Article Hub Version: 1.0.5",
+	Icon = 125448486325517,
+	AutoLock = true,
+    ShowCustomCursor = true,
+    NotifySide = "Right",
+    TabPadding = 2,
+    MenuFadeTime = 0
 })
 
--- Create Tabs in the Rayfield UI
-local MainTab = Window:CreateTab("⚔️ Main", nil)
-local AutoBondTab = Window:CreateTab("Auto Bond", nil)
-local AIMTab = Window:CreateTab("🧲 Aim Bot", nil)
-local ESPTab = Window:CreateTab("💣 ESP", nil)
-local SetiingTab = Window:CreateTab("⚙️ Settings", nil)
-
--- Game Services
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-
--- Aimbot Variables
-local fov = 136
-local isAiming = false
-local validNPCs = {}
-local raycastParams = RaycastParams.new()
-raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-
-local FOVring = Drawing.new("Circle")
-FOVring.Visible = false
-FOVring.Thickness = 2
-FOVring.Color = Color3.fromRGB(128, 0, 128)
-FOVring.Filled = false
-FOVring.Radius = fov
-FOVring.Position = Camera.ViewportSize / 2
-
--- ESP Variables
-local espEnabled = false
-local targetItems = {
-    ["RevolverAmmo"] = CFrame.new(134.093811, 3.32812667, 29850.623),
-    ["Prop_GoldBar"] = CFrame.new(141.93512, 0.845499456, 29925.3711),
-    ["Prop_SivelBar"] = CFrame.new(-28.6093884, 3.48437667, 27465.0605),
-    ["ShotgunShells"] = CFrame.new(150.9573516845703, 5.8973283767700195, 29840.47265625),
-    ["RifleAmmo"] = CFrame.new(142.2073516845703, 5.897316932678223, 29840.47265625),
-    ["Coal"] = CFrame.new(148.3759765625, 6.4521484375, 29784.201171875),
+Tabs = {
+	Tab = Window:AddTab("Main", "rbxassetid://7734053426"),
+	["UI Settings"] = Window:AddTab("UI Settings", "rbxassetid://7733955511")
 }
 
--- Functions for Aimbot
+local Main1Group = Tabs.Tab:AddLeftGroupbox("Main")
 
-local function isNPC(obj)
-    return obj:IsA("Model") 
-        and obj:FindFirstChild("Humanoid")
-        and obj.Humanoid.Health > 0
-        and obj:FindFirstChild("Head")
-        and obj:FindFirstChild("HumanoidRootPart")
-        and not game:GetService("Players"):GetPlayerFromCharacter(obj)
+Main1Group:AddToggle("AutoGeneral", {
+    Text = "Auto General",
+    Default = false, 
+    Callback = function(Value) 
+_G.AutoGeneral = Value
+while _G.AutoGeneral do
+if workspace.Map.Ingame:FindFirstChild("Map") then
+for i, v in ipairs(workspace.Map.Ingame:FindFirstChild("Map"):GetChildren()) do
+if v.Name == "Generator" and v:FindFirstChild("Remotes") and v.Remotes:FindFirstChild("RE") then
+v.Remotes:FindFirstChild("RE"):FireServer()
 end
-
-local function updateNPCs()
-    local tempTable = {}
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if isNPC(obj) then
-            tempTable[obj] = true
-        end
-    end
-    for i = #validNPCs, 1, -1 do
-        if not tempTable[validNPCs[i]] then
-            table.remove(validNPCs, i)
-        end
-    end
-    for obj in pairs(tempTable) do
-        if not table.find(validNPCs, obj) then
-            table.insert(validNPCs, obj)
-        end
-    end
 end
-
-local function getTarget()
-    local nearest = nil
-    local minDistance = math.huge
-    local viewportCenter = Camera.ViewportSize / 2
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-    for _, npc in ipairs(validNPCs) do
-        local screenPos, visible = Camera:WorldToViewportPoint(npc.HumanoidRootPart.Position)
-        if visible and screenPos.Z > 0 then
-            local ray = workspace:Raycast(
-                Camera.CFrame.Position,
-                (npc.HumanoidRootPart.Position - Camera.CFrame.Position).Unit * 1000,
-                raycastParams
-            )
-            if ray and ray.Instance:IsDescendantOf(npc) then
-                local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
-                if distance < minDistance and distance < fov then
-                    minDistance = distance
-                    nearest = npc
-                end
-            end
-        end
-    end
-    return nearest
 end
-
-local function aim(targetPosition)
-    local currentCF = Camera.CFrame
-    local targetDirection = (targetPosition - currentCF.Position).Unit
-    local smoothFactor = 0.581
-    local newLookVector = currentCF.LookVector:Lerp(targetDirection, smoothFactor)
-    Camera.CFrame = CFrame.new(currentCF.Position, currentCF.Position + newLookVector)
+task.wait(1.8)
 end
-
--- Aimbot Update Loop
-RunService.Heartbeat:Connect(function(dt)
-    if isAiming then
-        updateNPCs()
-        local target = getTarget()
-        if target then
-            aim(target.HumanoidRootPart.Position)
-        end
-    end
-end)
-
--- Toggle Button for Aimbot in Rayfield UI
-AIMTab:CreateToggle({
-    Name = "Aimbot",
-    CurrentValue = false,
-    Flag = "AimbotToggle",
-    Callback = function(value)
-        isAiming = value
-        FOVring.Visible = isAiming
-        print("Aimbot: " .. (isAiming and "ON" or "OFF"))
     end
 })
 
--- Functions for ESP
-
-local function createDistanceESP(part, itemName)
-    if part:FindFirstChild("ESPArrow") then return end
-
-    local distanceGui = Instance.new("BillboardGui")
-    distanceGui.Name = "ESPArrow"
-    distanceGui.Size = UDim2.new(0, 120, 0, 60)
-    distanceGui.AlwaysOnTop = true
-    distanceGui.Adornee = part
-
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    nameLabel.Position = UDim2.new(0, 0, 0, 0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextScaled = true
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.Text = itemName
-    nameLabel.Parent = distanceGui
-
-    local distanceLabel = Instance.new("TextLabel")
-    distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
-    distanceLabel.BackgroundTransparency = 1
-    distanceLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-    distanceLabel.TextScaled = true
-    distanceLabel.Font = Enum.Font.Gotham
-    distanceLabel.Name = "DistanceLabel"
-    distanceLabel.Parent = distanceGui
-
-    distanceGui.Parent = part
-
-    local attachment0 = Instance.new("Attachment", part)
-    attachment0.Name = "ItemAttachment"
-
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local rootPart = character:WaitForChild("HumanoidRootPart")
-
-    local attachment1 = rootPart:FindFirstChild("PlayerAttachment") or Instance.new("Attachment")
-    attachment1.Name = "PlayerAttachment"
-    attachment1.Parent = rootPart
-
-    local beam = Instance.new("Beam")
-    beam.Name = "ESPBeam"
-    beam.Attachment0 = attachment0
-    beam.Attachment1 = attachment1
-    beam.Width0 = 0.1
-    beam.Width1 = 0.1
-    beam.FaceCamera = true
-    beam.Color = ColorSequence.new(Color3.fromRGB(255, 215, 0))
-    beam.Transparency = NumberSequence.new(0)
-    beam.Parent = part
-
-    -- Continuous update for ESP distance
-    task.spawn(function()
-        while espEnabled and part:IsDescendantOf(workspace) do
-            local dist = (rootPart.Position - part.Position).Magnitude
-            local display = dist > 1000 and string.format("%.2f km", dist / 1000) or string.format("%.1f m", dist)
-            distanceLabel.Text = display
-            task.wait(0.5)
-        end
-
-        -- Cleanup ESP
-        distanceGui:Destroy()
-        beam:Destroy()
-        attachment0:Destroy()
-        attachment1:Destroy()
-    end)
+Main1Group:AddToggle("Inf Stamina", {
+    Text = "Inf Stamina",
+    Default = false, 
+    Callback = function(Value) 
+_G.InfStamina = Value
+while _G.InfStamina do
+local staminaModule = require(game.ReplicatedStorage:WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting"))
+if staminaModule then
+    staminaModule.MaxStamina = 999999
+    staminaModule.Stamina = 999999
+    staminaModule.__staminaChangedEvent:Fire(staminaModule.Stamina)
 end
-
--- Toggle Button for ESP in Rayfield UI
-ESPTab:CreateToggle({
-    Name = "ESP Items",
-    CurrentValue = false,
-    Flag = "ESPItemsToggle",
-    Callback = function(value)
-        espEnabled = value
-        print("ESP Items: " .. (espEnabled and "ON" or "OFF"))
-        if espEnabled then
-            -- Create ESP for target items
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v:IsA("BasePart") and targetItems[v.Name] then
-                    local expectedPos = targetItems[v.Name].Position
-                    if v.CFrame.Position:FuzzyEq(expectedPos, 1) then
-                        createDistanceESP(v, v.Name)
-                    end
-                end
-            end
-        else
-            -- Remove ESP
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v:IsA("BasePart") and targetItems[v.Name] then
-                    if v:FindFirstChild("ESPArrow") then v.ESPArrow:Destroy() end
-                    if v:FindFirstChild("ESPBeam") then v.ESPBeam:Destroy() end
-                    if v:FindFirstChild("ItemAttachment") then v.ItemAttachment:Destroy() end
-                end
-            end
-        end
+task.wait()
+end
     end
 })
--- Biến & service
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local isAttacking = false
 
--- Hàm trang bị tool
-local function equipItem(name)
-    local tool = LocalPlayer.Backpack:FindFirstChild(name)
-    if tool then
-        LocalPlayer.Character.Humanoid:EquipTool(tool)
-        print(name .. " đã được trang bị!")
-    else
-        warn(name .. " không tồn tại trong Backpack!")
-    end
-end
-
--- Hàm bỏ tool (unequip)
-local function unequipItem()
-    LocalPlayer.Character.Humanoid:UnequipTools()
-    print("Đã bỏ trang bị!")
-end
-
--- Toggle bật/tắt tự đánh
-local Toggle = MainTab:CreateToggle({
-    Name = "Melle",
-    CurrentValue = false,
-    Flag = "Toggle1",
+Main1Group:AddSlider("Speed", {
+    Text = "WalkSpeed",
+    Default = 20,
+    Min = 7,
+    Max = 50,
+    Rounding = 0,
+    Compact = false,
     Callback = function(Value)
-        isAttacking = Value
-        if Value then
-            equipItem("Shovel")
-        else
-            unequipItem()
-        end
-        print("Melle toggle:", Value and "Bật" or "Tắt")
-    end,
+_G.SpeedWalk = Value
+    end
 })
 
--- Tham số cho SwingEvent
-local args = {
-    [1] = Vector3.new(0.52230304479599, 0.13523706793785095, 0.8419681787490845)
-}
+Main1Group:AddToggle("SetSpeed", {
+    Text = "Set Speed",
+    Default = false, 
+    Callback = function(Value) 
+_G.NahSpeed = Value
+while _G.NahSpeed do
+if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = _G.SpeedWalk
+game.Players.LocalPlayer.Character.Humanoid:SetAttribute("BaseSpeed", _G.SpeedWalk)
+end
+task.wait()
+end
+    end
+})
 
--- Vòng lặp tự đánh khi bật toggle
-task.spawn(function()
-    while true do
-        if isAttacking then
-            -- Kiểm tra có đang cầm Shovel không, nếu không thì trang bị lại
-            if not LocalPlayer.Character:FindFirstChild("Shovel") then
-                equipItem("Shovel")
-            end
+local Main2Group = Tabs.Tab:AddRightGroupbox("Esp")
 
-            -- Gửi sự kiện đánh
-            LocalPlayer.Character.Shovel.SwingEvent:FireServer(unpack(args))
-        end
-        wait(1) -- chỉnh tốc độ đánh tại đây
+Main2Group:AddToggle("General", {
+    Text = "Esp General",
+    Default = false, 
+    Callback = function(Value) 
+_G.EspGeneral = Value
+if _G.EspGeneral == false then
+if workspace.Map.Ingame:FindFirstChild("Map") then
+	for i, v in pairs(workspace.Map.Ingame:FindFirstChild("Map"):GetChildren()) do
+		if v.Name == "Generator" then
+			for x, n in pairs(v:GetChildren()) do
+				if n.Name:find("Esp_") then
+					n:Destroy()
+				end
+			end
+		end
+	end
+end
+end
+while _G.EspGeneral do
+if workspace.Map.Ingame:FindFirstChild("Map") then
+for i, v in pairs(workspace.Map.Ingame:FindFirstChild("Map"):GetChildren()) do
+if v.Name == "Generator" and v:FindFirstChild("Progress") then
+if v:FindFirstChild("Esp_Highlight") then
+	if v:FindFirstChild("Progress").Value == 100 then
+		v:FindFirstChild("Esp_Highlight").FillColor = Color3.fromRGB(0, 255, 0)
+		v:FindFirstChild("Esp_Highlight").OutlineColor = Color3.fromRGB(0, 255, 0)
+	else
+		v:FindFirstChild("Esp_Highlight").FillColor = _G.ColorLight or Color3.new(255, 255, 255)
+		v:FindFirstChild("Esp_Highlight").OutlineColor = _G.ColorLight or Color3.new(255, 255, 255)
+	end
+end
+if _G.EspHighlight == true and v:FindFirstChild("Esp_Highlight") == nil then
+	local Highlight = Instance.new("Highlight")
+	Highlight.Name = "Esp_Highlight"
+	Highlight.FillColor = Color3.fromRGB(255, 255, 255) 
+	Highlight.OutlineColor = Color3.fromRGB(255, 255, 255) 
+	Highlight.FillTransparency = 0.5
+	Highlight.OutlineTransparency = 0
+	Highlight.Adornee = v
+	Highlight.Parent = v
+	elseif _G.EspHighlight == false and v:FindFirstChild("Esp_Highlight") then
+	v:FindFirstChild("Esp_Highlight"):Destroy()
+end
+if v:FindFirstChild("Esp_Gui") and v["Esp_Gui"]:FindFirstChild("TextLabel") then
+	v["Esp_Gui"]:FindFirstChild("TextLabel").Text = 
+	        (_G.EspName == true and "General ("..v.Progress.Value.."%)" or "")..
+            (_G.EspDistance == true and "\nDistance [ Fix ]" or "")
+    v["Esp_Gui"]:FindFirstChild("TextLabel").TextSize = _G.EspGuiTextSize or 15
+    v["Esp_Gui"]:FindFirstChild("TextLabel").TextColor3 = _G.EspGuiTextColor or Color3.new(255, 255, 255)
+end
+if _G.EspGui == true and v:FindFirstChild("Esp_Gui") == nil then
+	GuiGenEsp = Instance.new("BillboardGui", v)
+	GuiGenEsp.Adornee = v
+	GuiGenEsp.Name = "Esp_Gui"
+	GuiGenEsp.Size = UDim2.new(0, 100, 0, 150)
+	GuiGenEsp.AlwaysOnTop = true
+	GuiGenEsp.StudsOffset = Vector3.new(0, 3, 0)
+	GuiGenEspText = Instance.new("TextLabel", GuiGenEsp)
+	GuiGenEspText.BackgroundTransparency = 1
+	GuiGenEspText.Font = Enum.Font.Code
+	GuiGenEspText.Size = UDim2.new(0, 100, 0, 100)
+	GuiGenEspText.TextSize = 15
+	GuiGenEspText.TextColor3 = Color3.new(0,0,0) 
+	GuiGenEspText.TextStrokeTransparency = 0.5
+	GuiGenEspText.Text = ""
+	local UIStroke = Instance.new("UIStroke")
+	UIStroke.Color = Color3.new(0, 0, 0)
+	UIStroke.Thickness = 1.5
+	UIStroke.Parent = GuiGenEspText
+	elseif _G.EspGui == false and v:FindFirstChild("Esp_Gui") then
+	v:FindFirstChild("Esp_Gui"):Destroy()
+end
+end
+end
+end
+task.wait()
+end
+    end
+})
+
+function Esp_Player(v, Colorlight)
+if v:FindFirstChild("Esp_Highlight") then
+	v:FindFirstChild("Esp_Highlight").FillColor = Colorlight or Color3.fromRGB(255, 255, 255)
+	v:FindFirstChild("Esp_Highlight").OutlineColor = Colorlight or Color3.fromRGB(255, 255, 255)
+end
+if _G.EspHighlight == true and v:FindFirstChild("Esp_Highlight") == nil then
+	local Highlight = Instance.new("Highlight")
+	Highlight.Name = "Esp_Highlight"
+	Highlight.FillColor = Color3.fromRGB(255, 255, 255) 
+	Highlight.OutlineColor = Color3.fromRGB(255, 255, 255) 
+	Highlight.FillTransparency = 0.5
+	Highlight.OutlineTransparency = 0
+	Highlight.Adornee = v
+	Highlight.Parent = v
+	elseif _G.EspHighlight == false and v:FindFirstChild("Esp_Highlight") then
+	v:FindFirstChild("Esp_Highlight"):Destroy()
+end
+if v.Head:FindFirstChild("Esp_Gui") and v.Head["Esp_Gui"]:FindFirstChild("TextLabel") then
+	v.Head["Esp_Gui"]:FindFirstChild("TextLabel").Text = 
+	        (_G.EspName == true and v.Name or "")..
+            (_G.EspDistance == true and "\nDistance [ "..string.format("%.1f", (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude).." ]" or "")..
+            (_G.EspHealth == true and "\nHealth [ "..string.format("%.0f", v.Humanoid.Health).." ]" or "")
+    v.Head["Esp_Gui"]:FindFirstChild("TextLabel").TextSize = _G.EspGuiTextSize or 15
+    v.Head["Esp_Gui"]:FindFirstChild("TextLabel").TextColor3 = _G.EspGuiTextColor or Color3.new(255, 255, 255)
+end
+if _G.EspGui == true and v.Head:FindFirstChild("Esp_Gui") == nil then
+	GuiPlayerEsp = Instance.new("BillboardGui", v.Head)
+	GuiPlayerEsp.Adornee = v.Head
+	GuiPlayerEsp.Name = "Esp_Gui"
+	GuiPlayerEsp.Size = UDim2.new(0, 100, 0, 150)
+	GuiPlayerEsp.AlwaysOnTop = true
+	GuiPlayerEsp.StudsOffset = Vector3.new(0, 3, 0)
+	GuiPlayerEspText = Instance.new("TextLabel", GuiPlayerEsp)
+	GuiPlayerEspText.BackgroundTransparency = 1
+	GuiPlayerEspText.Font = Enum.Font.Code
+	GuiPlayerEspText.Size = UDim2.new(0, 100, 0, 100)
+	GuiPlayerEspText.TextSize = 15
+	GuiPlayerEspText.TextColor3 = Color3.new(0,0,0) 
+	GuiPlayerEspText.TextStrokeTransparency = 0.5
+	GuiPlayerEspText.Text = ""
+	local UIStroke = Instance.new("UIStroke")
+	UIStroke.Color = Color3.new(0, 0, 0)
+	UIStroke.Thickness = 1.5
+	UIStroke.Parent = GuiPlayerEspText
+	elseif _G.EspGui == false and v.Head:FindFirstChild("Esp_Gui") then
+	v.Head:FindFirstChild("Esp_Gui"):Destroy()
+end
+end
+
+Main2Group:AddDropdown("EspPlayer", {
+    Text = "Esp Player",
+    Values = {"Killers", "Survivors"},
+    Default = "",
+    Multi = true
+})
+
+Main2Group:AddToggle("Player", {
+    Text = "Esp Player",
+    Default = false, 
+    Callback = function(Value) 
+_G.EspPlayer = Value
+if _G.EspPlayer == false then
+	for i, v in pairs(game.Workspace.Players:GetChildren()) do
+		if v.Name == "Killers" or v.Name == "Survivors" then
+			for y, z in pairs(v:GetChildren()) do
+				if z.Name:find("Esp_") then
+					z:Destroy()
+				end
+			end
+		end
+	end
+end
+while _G.EspPlayer do
+for i, v in pairs(game.Workspace.Players:GetChildren()) do
+	if Options.EspPlayer.Value["Killers"] and v.Name == "Killers" then
+		for y, z in pairs(v:GetChildren()) do
+			if z:FindFirstChild("HumanoidRootPart") and z:FindFirstChild("Humanoid") and z:FindFirstChild("Head") then
+				Esp_Player(z, _G.ColorLightKill or Color3.fromRGB(255, 0, 0))
+			end
+		end
+	elseif not Options.EspPlayer.Value["Killers"] then
+		if v.Name == "Killers" then
+			for y, z in pairs(v:GetChildren()) do
+				if z.Name:find("Esp_") then
+					z:Destroy()
+				end
+			end
+		end
+	end
+	if Options.EspPlayer.Value["Survivors"] and v.Name == "Survivors" then
+		for y, z in pairs(v:GetChildren()) do
+			if z:FindFirstChild("HumanoidRootPart") and z:FindFirstChild("Humanoid") and z:FindFirstChild("Head") then
+				Esp_Player(z, _G.ColorLightSurvivors or Color3.fromRGB(0, 255, 0))
+			end
+		end
+	elseif not Options.EspPlayer.Value["Survivors"] and v.Name == "Survivors" then
+		for y, z in pairs(v:GetChildren()) do
+			if z.Name:find("Esp_") then
+				z:Destroy()
+			end
+		end
+	end
+end
+task.wait()
+end
+    end
+}):AddColorPicker("Color Esp1", {
+     Default = Color3.new(255, 0, 0),
+     Callback = function(Value)
+_G.ColorLightKill = Value
+     end
+}):AddColorPicker("Color Esp2", {
+     Default = Color3.new(0, 255, 0),
+     Callback = function(Value)
+_G.ColorLightSurvivors= Value
+     end
+})
+
+Main2Group:AddDivider()
+
+_G.EspHighlight = false
+Main2Group:AddToggle("Esp Hight Light", {
+    Text = "Esp Hight Light",
+    Default = false, 
+    Callback = function(Value) 
+_G.EspHighlight = Value
+    end
+}):AddColorPicker("Color Esp", {
+     Default = Color3.new(255,255,255),
+     Callback = function(Value)
+_G.ColorLight = Value
+     end
+})
+
+_G.EspGui = false
+Main2Group:AddToggle("Esp Gui", {
+    Text = "Esp Gui",
+    Default = false, 
+    Callback = function(Value) 
+_G.EspGui = Value
+    end
+}):AddColorPicker("Color Esp Text", {
+     Default = Color3.new(255,255,255),
+     Callback = function(Value)
+_G.EspGuiTextColor = Value
+     end
+})
+
+Main2Group:AddSlider("Text Size", {
+    Text = "Text Size [ Gui ]",
+    Default = 7,
+    Min = 7,
+    Max = 50,
+    Rounding = 0,
+    Compact = false,
+    Callback = function(Value)
+_G.EspGuiTextSize = Value
+    end
+})
+
+Main2Group:AddDivider()
+
+_G.EspName = false
+Main2Group:AddToggle("Esp Name", {
+    Text = "Esp Name",
+    Default = false, 
+    Callback = function(Value) 
+_G.EspName = Value
+    end
+})
+
+_G.EspDistance = false
+Main2Group:AddToggle("Esp Distance", {
+    Text = "Esp Distance",
+    Default = false, 
+    Callback = function(Value) 
+_G.EspDistance = Value
+    end
+})
+
+_G.EspHealth = false
+Main2Group:AddToggle("Esp Health", {
+    Text = "Esp Health",
+    Default = false, 
+    Callback = function(Value) 
+_G.EspHealth = Value
+    end
+})
+
+------------------------------------------------------------------------
+local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu")
+local CreditsGroup = Tabs["UI Settings"]:AddRightGroupbox("Credits")
+local Info = Tabs["UI Settings"]:AddRightGroupbox("Info")
+
+MenuGroup:AddDropdown("NotifySide", {
+    Text = "Notification Side",
+    Values = {"Left", "Right"},
+    Default = "Right",
+    Multi = false,
+    Callback = function(Value)
+Library:SetNotifySide(Value)
+    end
+})
+
+_G.ChooseNotify = "Obsidian"
+MenuGroup:AddDropdown("NotifyChoose", {
+    Text = "Notification Choose",
+    Values = {"Obsidian", "Roblox"},
+    Default = "",
+    Multi = false,
+    Callback = function(Value)
+_G.ChooseNotify = Value
+    end
+})
+
+_G.NotificationSound = true
+MenuGroup:AddToggle("NotifySound", {
+    Text = "Notification Sound",
+    Default = true, 
+    Callback = function(Value) 
+_G.NotificationSound = Value 
+    end
+})
+
+MenuGroup:AddSlider("Volume Notification", {
+    Text = "Volume Notification",
+    Default = 2,
+    Min = 2,
+    Max = 10,
+    Rounding = 1,
+    Compact = true,
+    Callback = function(Value)
+_G.VolumeTime = Value
+    end
+})
+
+MenuGroup:AddToggle("KeybindMenuOpen", {Default = false, Text = "Open Keybind Menu", Callback = function(Value) Library.KeybindFrame.Visible = Value end})
+MenuGroup:AddToggle("ShowCustomCursor", {Text = "Custom Cursor", Default = true, Callback = function(Value) Library.ShowCustomCursor = Value end})
+MenuGroup:AddDivider()
+MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", {Default = "RightShift", NoUI = true, Text = "Menu keybind"})
+_G.LinkJoin = loadstring(game:HttpGet("https://pastefy.app/2LKQlhQM/raw"))()
+MenuGroup:AddButton("Copy Link Discord", function()
+    if setclipboard then
+        setclipboard(_G.LinkJoin["Discord"])
+        Library:Notify("Copied discord link to clipboard!")
+    else
+        Library:Notify("Discord link: ".._G.LinkJoin["Discord"], 10)
+    end
+end):AddButton("Copy Link Zalo", function()
+    if setclipboard then
+        setclipboard(_G.LinkJoin["Zalo"])
+        Library:Notify("Copied Zalo link to clipboard!")
+    else
+        Library:Notify("Zalo link: ".._G.LinkJoin["Zalo"], 10)
+    end
+end)
+MenuGroup:AddButton("Unload", function() Library:Unload() end)
+CreditsGroup:AddLabel("AmongUs - Python / Dex / Script", true)
+CreditsGroup:AddLabel("Giang Hub - Script / Dex", true)
+CreditsGroup:AddLabel("Vu - Script / Dex", true)
+
+Info:AddLabel("Counter [ "..game:GetService("LocalizationService"):GetCountryRegionForPlayerAsync(game.Players.LocalPlayer).." ]", true)
+Info:AddLabel("Executor [ "..identifyexecutor().." ]", true)
+Info:AddLabel("Job Id [ "..game.JobId.." ]", true)
+Info:AddDivider()
+Info:AddButton("Copy JobId", function()
+    if setclipboard then
+        setclipboard(tostring(game.JobId))
+        Library:Notify("Copied Success")
+    else
+        Library:Notify(tostring(game.JobId), 10)
     end
 end)
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-
-local espEnabled = false
-local Toggle = AutoBondTab:CreateToggle({
-    Name = "Auto Bond",
-    CurrentValue = false,
-    Flag = "Toggle1",
-    Callback = function(enabled)
-        if enabled then
-            -- Auto Bond Code Start
-            task.spawn(function()
-                if not game:IsLoaded() then
-                    game.Loaded:Wait()
-                end
-                repeat task.wait() until game.Players.LocalPlayer.Character and game.Players.LocalPlayer.PlayerGui:FindFirstChild("LoadingScreenPrefab") == nil
-                game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("EndDecision"):FireServer(false)
-
-                if game.CoreGui:FindFirstChild("BondCheck") == nil then
-                    local gui = Instance.new("ScreenGui", game.CoreGui)
-                    gui.Name = "BondCheck"
-
-                    local Frame = Instance.new("Frame")
-                    Frame.Name = "Bond"
-                    Frame.Size = UDim2.new(0.13, 0, 0.1, 0)
-                    Frame.Position = UDim2.new(0.03, 0, 0.05, 0)
-                    Frame.BackgroundColor3 = Color3.new(1, 1, 1)
-                    Frame.BorderColor3 = Color3.new(0, 0, 0)
-                    Frame.BorderSizePixel = 1
-                    Frame.Active = true
-                    Frame.BackgroundTransparency = 0.3
-                    Frame.Draggable = true
-                    Frame.Parent = gui
-
-                    local UICorner = Instance.new("UICorner")
-                    UICorner.CornerRadius = UDim.new(1, 0)
-                    UICorner.Parent = Frame
-
-                    local UIStroke = Instance.new("UIStroke")
-                    UIStroke.Color = Color3.new(0, 0, 0)
-                    UIStroke.Thickness = 2.3
-                    UIStroke.Parent = Frame
-
-                    local TextLabel = Instance.new("TextLabel")
-                    TextLabel.Size = UDim2.new(1, 0, 1, 0)
-                    TextLabel.Position = UDim2.new(0, 0, 0, 0)
-                    TextLabel.BackgroundTransparency = 1
-                    TextLabel.Text = "Really"
-                    TextLabel.TextSize = 20
-                    TextLabel.FontFace = Font.new("rbxassetid://12187372175", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-                    TextLabel.TextColor3 = Color3.new(0, 0, 0)
-                    TextLabel.Parent = Frame
-                end
-
-                _G.Bond = 0
-                workspace.RuntimeItems.ChildAdded:Connect(function(v)
-                    if v.Name:find("Bond") and v:FindFirstChild("Part") then
-                        v.Destroying:Connect(function()
-                            _G.Bond += 1
-                        end)
-                    end
-                end)
-
-                spawn(function()
-                    repeat task.wait()
-                        local textLabel = game.CoreGui:FindFirstChild("BondCheck") and game.CoreGui.BondCheck:FindFirstChild("Bond") and game.CoreGui.BondCheck.Bond:FindFirstChild("TextLabel")
-                        if textLabel then
-                            textLabel.Text = "Bond (+" .. _G.Bond .. ")"
-                        end
-                    until game.CoreGui:FindFirstChild("BondCheck") == nil
-                end)
-
-                local lp = game.Players.LocalPlayer
-                local char = lp.Character or lp.CharacterAdded:Wait()
-
-                if char:FindFirstChild("Humanoid") then
-                    workspace.CurrentCamera.CameraSubject = char:FindFirstChild("Humanoid")
-                end
-                lp.CameraMode = "Classic"
-                lp.CameraMaxZoomDistance = math.huge
-                lp.CameraMinZoomDistance = 30
-
-                local hrp = char:WaitForChild("HumanoidRootPart")
-                hrp.Anchored = true
-
-                repeat
-                    task.wait()
-                    hrp.Anchored = true
-                    wait(0.5)
-                    hrp.CFrame = CFrame.new(80, 3, -9000)
-                until workspace.RuntimeItems:FindFirstChild("MaximGun")
-
-                wait(0.3)
-                for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-                    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") then
-                        v.VehicleSeat.Disabled = false
-                        v.VehicleSeat:SetAttribute("Disabled", false)
-                        v.VehicleSeat:Sit(char:FindFirstChild("Humanoid"))
-                    end
-                end
-
-                wait(0.5)
-                for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-                    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (hrp.Position - v.VehicleSeat.Position).Magnitude < 400 then
-                        hrp.CFrame = v.VehicleSeat.CFrame
-                    end
-                end
-
-                wait(1)
-                hrp.Anchored = false
-
-                repeat wait() until char:FindFirstChild("Humanoid").Sit == true
-
-                wait(0.5)
-                char.Humanoid.Sit = false
-                wait(0.5)
-
-                repeat
-                    task.wait()
-                    for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-                        if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (hrp.Position - v.VehicleSeat.Position).Magnitude < 400 then
-                            hrp.CFrame = v.VehicleSeat.CFrame
-                        end
-                    end
-                until char.Humanoid.Sit == true
-
-                wait(0.9)
-                for _, model in pairs(workspace:GetChildren()) do
-                    if model:IsA("Model") and model:FindFirstChild("RequiredComponents") then
-                        local rc = model.RequiredComponents
-                        if rc:FindFirstChild("Controls") and rc.Controls:FindFirstChild("ConductorSeat") and rc.Controls.ConductorSeat:FindFirstChild("VehicleSeat") then
-                            local seatCF = rc.Controls.ConductorSeat.VehicleSeat.CFrame
-                            local tween = game:GetService("TweenService"):Create(hrp, TweenInfo.new(25, Enum.EasingStyle.Quad), {CFrame = seatCF * CFrame.new(0, 20, 0)})
-                            tween:Play()
-
-                            if not hrp:FindFirstChild("VelocityHandler") then
-                                local bv = Instance.new("BodyVelocity")
-                                bv.Name = "VelocityHandler"
-                                bv.Parent = hrp
-                                bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                                bv.Velocity = Vector3.new(0, 0, 0)
-                            end
-                            tween.Completed:Wait()
-                        end
-                    end
-                end
-
-                wait(1)
-                while true do
-                    if char:FindFirstChild("Humanoid").Sit then
-                        local endTween = game:GetService("TweenService"):Create(hrp, TweenInfo.new(17, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
-                        endTween:Play()
-
-                        if not hrp:FindFirstChild("VelocityHandler") then
-                            local bv = Instance.new("BodyVelocity")
-                            bv.Name = "VelocityHandler"
-                            bv.Parent = hrp
-                            bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                            bv.Velocity = Vector3.new(0, 0, 0)
-                        end
-
-                        repeat task.wait() until workspace.RuntimeItems:FindFirstChild("Bond")
-                        endTween:Cancel()
-
-                        for _, bond in pairs(workspace.RuntimeItems:GetChildren()) do
-                            if bond.Name:find("Bond") and bond:FindFirstChild("Part") then
-                                repeat task.wait()
-                                    if bond:FindFirstChild("Part") then
-                                        hrp.CFrame = bond.Part.CFrame
-                                        game:GetService("ReplicatedStorage").Shared.Network.RemotePromise.Remotes.C_ActivateObject:FireServer(bond)
-                                    end
-                                until bond:FindFirstChild("Part") == nil
-                            end
-                        end
-                    end
-                    task.wait()
-                end
-            end)
-            -- Auto Bond Code End
-        end
-    end,
+Info:AddInput("Join Job", {
+    Default = "Nah",
+    Numeric = false,
+    Text = "Join Job",
+    Placeholder = "UserJobId",
+    Callback = function(Value)
+_G.JobIdJoin = Value
+    end
 })
 
+Info:AddButton("Join JobId", function()
+game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, _G.JobIdJoin, game.Players.LocalPlayer)
+end)
+
+Info:AddButton("Copy Join JobId", function()
+    if setclipboard then
+        setclipboard('game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, '..game.JobId..", game.Players.LocalPlayer)")
+        Library:Notify("Copied Success") 
+    else
+        Library:Notify(tostring(game.JobId), 10)
+    end
+end)
+
+Library.ToggleKeybind = Options.MenuKeybind
+
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:BuildConfigSection(Tabs["UI Settings"])
+ThemeManager:ApplyToTab(Tabs["UI Settings"])
+SaveManager:LoadAutoloadConfig() 
