@@ -1,55 +1,186 @@
--- mm2 coin farm 🤑🤑🤑
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local TweenService = game:GetService("TweenService")
-local LP = game.Players.LocalPlayer
-local Char = LP.Character or LP.CharacterAdded:Wait()
-local HRP = Char:WaitForChild("HumanoidRootPart")
-local Humanoid = Char:WaitForChild("Humanoid")
+local Window = Rayfield:CreateWindow({
+   Name = "SheScripts Gag",
+   Icon = 0,
+   LoadingTitle = "Loading Script",
+   LoadingSubtitle = "Grow A Garden Seed Buyer",
+   ShowText = "SheScripts",
+   Theme = "Midnight",
+   ToggleUIKeybind = "K",
+   ConfigurationSaving = {
+      Enabled = true,
+      FileName = "SheScriptsGag"
+   },
+   Discord = {
+      Enabled = false
+   },
+   KeySystem = false
+})
 
-local function GetMap()
-    while true do
-        for _, obj in ipairs(workspace:GetChildren()) do
-            if obj:GetAttribute("MapID") and obj:FindFirstChild("CoinContainer") then
-                return obj
+local Tab = Window:CreateTab("Buy Seeds", "package")
+
+local validSeeds = {
+   "Carrot", "Strawberry", "Blueberry", "Tomato", "Cauliflower", "Watermelon", "Green Apple", "Avocado", "Banana", "Pineapple", "Kiwi", "Bell Pepper", "Prickly Pear", "Loquat", "Feljoa"
+}
+
+local selectedSeed = validSeeds[1]
+local buyingAll = false
+local autoBuying = false
+local autoBuyingAll = false
+
+local rs = game:GetService("ReplicatedStorage")
+local buyEvent = rs:FindFirstChild("GameEvents") and rs.GameEvents:FindFirstChild("BuySeedStock")
+
+Tab:CreateInput({
+   Name = "Seed Name",
+   PlaceholderText = "Enter Seed Name",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      selectedSeed = Text
+   end
+})
+
+Tab:CreateDropdown({
+   Name = "Select Seed",
+   Options = validSeeds,
+   CurrentOption = {validSeeds[1]},
+   MultipleOptions = false,
+   Callback = function(Options)
+      selectedSeed = Options[1]
+   end
+})
+
+Tab:CreateButton({
+   Name = "Buy Selected Seed",
+   Callback = function()
+      if buyEvent and selectedSeed then
+         buyEvent:FireServer(selectedSeed)
+      end
+   end
+})
+
+Tab:CreateToggle({
+   Name = "Auto Buy Selected",
+   CurrentValue = false,
+   Callback = function(val)
+      autoBuying = val
+      task.spawn(function()
+         while autoBuying do
+            if buyEvent and selectedSeed then
+               buyEvent:FireServer(selectedSeed)
             end
-        end
-        task.wait()
-    end
-end
+            task.wait(0.00000000001)
+         end
+      end)
+   end
+})
 
-local function getNearest()
-    local map = GetMap()
-    local closest, dist = nil, math.huge
-    for _, coin in ipairs(map.CoinContainer:GetChildren()) do
-        local v = coin:FindFirstChild("CoinVisual")
-        if v and not v:GetAttribute("Collected") then
-            local d = (HRP.Position - coin.Position).Magnitude
-            if d < dist then
-                closest = coin
-                dist = d
+Tab:CreateToggle({
+   Name = "Auto Buy All",
+   CurrentValue = false,
+   Callback = function(val)
+      autoBuyingAll = val
+      task.spawn(function()
+         while autoBuyingAll do
+            for _, seed in ipairs(validSeeds) do
+               if buyEvent then
+                  buyEvent:FireServer(seed)
+               end
+               task.wait(0.00000000001)
             end
-        end
-    end
-    return closest
-end
+         end
+      end)
+   end
+})
 
-local function tp(hp)
-    Humanoid:ChangeState(11)
-    local d = (HRP.Position - hp.Position).Magnitude
-    local t = TweenService:Create(HRP, TweenInfo.new(d / 25, Enum.EasingStyle.Linear), {CFrame = hp.CFrame})
-    t:Play()
-    t.Completed:Wait()
-end
+local Sell = Window:CreateTab("Sell", "rewind")
 
-while task.wait() do
-    local target = getNearest()
-    if target then
-        tp(target)
-        local v = target:FindFirstChild("CoinVisual")
-        while v and not v:GetAttribute("Collected") and v.Parent do
-            local n = getNearest()
-            if n and n ~= target then break end
-            task.wait()
-        end
-    end
-end
+Sell:CreateButton({
+   Name = "Sell Inventory",
+   Callback = function()
+      local sellPos = CFrame.new(90.08035, 0.98381, 3.02662)
+      local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+      if hrp then
+         local orig = hrp.CFrame
+         hrp.CFrame = sellPos
+         task.wait(0.1)
+         rs.GameEvents.Sell_Inventory:FireServer()
+         task.wait(0.1)
+         hrp.CFrame = orig
+      end
+   end
+})
+
+Sell:CreateButton({
+   Name = "Sell Item in Hand",
+   Callback = function()
+      local sellPos = CFrame.new(90.08035, 0.98381, 3.02662)
+      local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+      if hrp then
+         local orig = hrp.CFrame
+         hrp.CFrame = sellPos
+         task.wait(0.1)
+         rs.GameEvents.Sell_Item:FireServer()
+         task.wait(0.1)
+         hrp.CFrame = orig
+      end
+   end
+})
+
+local Shop = Window:CreateTab("Shops", "shopping-bag")
+
+Shop:CreateButton({
+   Name = "Seed Shop",
+   Callback = function()
+      local gui = game:GetService("Players").LocalPlayer.PlayerGui
+      gui.Seed_Shop.Enabled = true
+      gui.Gear_Shop.Enabled = false
+      gui.HoneyEventShop_UI.Enabled = false
+      gui.CosmeticShop_UI.Enabled = false
+   end
+})
+
+Shop:CreateButton({
+   Name = "Gear Shop",
+   Callback = function()
+      local gui = game:GetService("Players").LocalPlayer.PlayerGui
+      gui.Seed_Shop.Enabled = false
+      gui.Gear_Shop.Enabled = true
+      gui.HoneyEventShop_UI.Enabled = false
+      gui.CosmeticShop_UI.Enabled = false
+   end
+})
+
+Shop:CreateButton({
+   Name = "Cosmetics Shop",
+   Callback = function()
+      local gui = game:GetService("Players").LocalPlayer.PlayerGui
+      gui.Seed_Shop.Enabled = false
+      gui.Gear_Shop.Enabled = false
+      gui.HoneyEventShop_UI.Enabled = false
+      gui.CosmeticShop_UI.Enabled = true
+   end
+})
+
+Shop:CreateButton({
+   Name = "Honey Shop",
+   Callback = function()
+      local gui = game:GetService("Players").LocalPlayer.PlayerGui
+      gui.Seed_Shop.Enabled = false
+      gui.Gear_Shop.Enabled = false
+      gui.HoneyEventShop_UI.Enabled = true
+      gui.CosmeticShop_UI.Enabled = false
+   end
+})
+
+Shop:CreateButton({
+   Name = "Hide",
+   Callback = function()
+      local gui = game:GetService("Players").LocalPlayer.PlayerGui
+      gui.Seed_Shop.Enabled = false
+      gui.Gear_Shop.Enabled = false
+      gui.HoneyEventShop_UI.Enabled = false
+      gui.CosmeticShop_UI.Enabled = false
+   end
+})
