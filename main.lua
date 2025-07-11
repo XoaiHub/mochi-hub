@@ -1,15 +1,3 @@
-
--- ==========================
--- 📁 Mochi Hub | Combined Script
--- ==========================
-
--- CẤU HÌNH NGOÀI (PHẢI ĐƯỢC SET TRƯỚC KHI LOAD SCRIPT NÀY)
--- getgenv().Settings = { ... }
--- getgenv().EnableTeleport = true
--- getgenv().EnableParty = { Normal = true, ScorchedEarth = false, Nightmare = false }
--- getgenv().TeleportZoneName = "PartyZone2"
--- getgenv().YOffset = 5
-
 -- ==========================
 -- ⚙️ BOOST SERVER + LOCK FPS
 -- ==========================
@@ -121,18 +109,11 @@ task.delay(5, function()
         if getgenv().EnableParty.Nightmare then createParty("Nightmare") end
     end
 end)
-
--- ==========================
--- 🧩 Các phần còn lại (UI, Bond, AutoFarm...)
--- ==========================
--- (PHẦN NÀY GIỮ NGUYÊN TỪ ĐOẠN SAU TRONG SCRIPT CŨ)
--- Nên tách thành file riêng nếu muốn quản lý dễ hơn.
--- (Do dài quá nên không paste vào tiếp tại đây)
-
 -- ==========================
 -- 🧩 UI Mochi Hub
+-- có thể tự xóa ui
 -- ==========================
-if game.CoreGui:FindFirstChild("NexonUI") then
+if game.CoreGui:FindFirstChild("MochiUI") then
     game.CoreGui.NexonUI:Destroy()
 end
 
@@ -229,7 +210,7 @@ end)
 spawn(function()
     while bondLabel do
         bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
-        task.wait(0.3)
+        task.wait(0.5)
     end
 end)
 
