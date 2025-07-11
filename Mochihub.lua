@@ -236,7 +236,7 @@ end
 
 task.wait(0.5)
 for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 400 then
+    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 300 then
         player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
     end
 end
@@ -250,7 +250,7 @@ wait(0.5)
 
 repeat task.wait()
     for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-        if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 400 then
+        if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 300 then
             player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
         end
     end
