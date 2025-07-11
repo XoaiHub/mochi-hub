@@ -236,7 +236,7 @@ end
 
 task.wait(0.2)
 for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 500 then
+    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 250 then
         player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
     end
 end
@@ -250,13 +250,13 @@ wait(0.5)
 
 repeat task.wait()
     for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-        if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 500 then
+        if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 250 then
             player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
         end
     end
 until player.Character.Humanoid.Sit == true
 
-wait(0.9)
+wait(0.5)
 for _, v in pairs(workspace:GetChildren()) do
     if v:IsA("Model") and v:FindFirstChild("RequiredComponents") and v.RequiredComponents:FindFirstChild("Controls") and v.RequiredComponents.Controls:FindFirstChild("ConductorSeat") then
         local seat = v.RequiredComponents.Controls.ConductorSeat:FindFirstChild("VehicleSeat")
@@ -273,7 +273,7 @@ for _, v in pairs(workspace:GetChildren()) do
     end
 end
 
-wait(1)
+wait(0.5)
 while true do
     if player.Character.Humanoid.Sit then
         local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(50, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
