@@ -217,7 +217,7 @@ for _, v in pairs(workspace:GetChildren()) do
     if v:IsA("Model") and v:FindFirstChild("RequiredComponents") and v.RequiredComponents:FindFirstChild("Controls") and v.RequiredComponents.Controls:FindFirstChild("ConductorSeat") then
         local seat = v.RequiredComponents.Controls.ConductorSeat:FindFirstChild("VehicleSeat")
         if seat then
-            local TpTrain = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(25, Enum.EasingStyle.Quad), {CFrame = seat.CFrame * CFrame.new(0, 20, 0)})
+            local TpTrain = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(55, Enum.EasingStyle.Quad), {CFrame = seat.CFrame * CFrame.new(0, 20, 0)})
             TpTrain:Play()
             local bv = Instance.new("BodyVelocity")
             bv.Name = "VelocityHandler"
@@ -232,7 +232,7 @@ end
 wait(1)
 while true do
     if player.Character.Humanoid.Sit then
-        local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(17, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
+        local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(50, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
         TpEnd:Play()
         local bv = Instance.new("BodyVelocity")
         bv.Name = "VelocityHandler"
