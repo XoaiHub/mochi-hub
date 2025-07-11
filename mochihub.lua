@@ -1,35 +1,83 @@
+-- ==========================
+-- ⚙️ BOOST SERVER + LOCK FPS
+-- ==========================
+local cfg = getgenv().Settings
 
--- CONFIG (chỉnh bên ngoài trước khi load file này)
--- getgenv().EnableTeleport = true
--- getgenv().EnableParty = { Normal = true, ScorchedEarth = false, Nightmare = false }
--- getgenv().TeleportZoneName = "PartyZone2"
--- getgenv().YOffset = 5
+-- 🔒 Lock FPS thủ công
+if cfg["Lock FPS"] and cfg["Lock FPS"]["Enabled"] then
+    setfpscap(cfg["Lock FPS"]["FPS"])
+end
 
--- Nếu tắt teleport thì thoát
+-- ⚙️ Boost Server Script
+local function optimizeGame()
+    if not cfg["Boost Server"] then return end
+
+    -- 🧹 Xoá object theo tên
+    if cfg["Object Removal"] and cfg["Object Removal"]["Enabled"] then
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            for _, name in ipairs(cfg["Object Removal"]["Targets"]) do
+                if string.find(obj.Name:lower(), name:lower()) then
+                    pcall(function() obj:Destroy() end)
+                end
+            end
+        end
+    end
+
+    -- 💨 Xoá hiệu ứng
+    if cfg["Remove Effects"] then
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+                pcall(function() v:Destroy() end)
+            end
+        end
+    end
+
+    -- 🔇 Xoá âm thanh
+    if cfg["Remove Sounds"] then
+        for _, sound in ipairs(workspace:GetDescendants()) do
+            if sound:IsA("Sound") and sound.Looped then
+                pcall(function() sound:Stop(); sound:Destroy() end)
+            end
+        end
+    end
+
+    -- 🌙 Tối giản ánh sáng
+    if cfg["Simplify Lighting"] then
+        local lighting = game:GetService("Lighting")
+        lighting.FogEnd = 1000000
+        lighting.Brightness = 0
+        lighting.GlobalShadows = false
+    end
+end
+
+spawn(function()
+    while true do
+        optimizeGame()
+        task.wait(5)
+    end
+end)
+
+-- ==========================
+-- 🚂 TELEPORT + CREATE PARTY
+-- ==========================
 if not getgenv().EnableTeleport then return end
 
--- Đợi game load
 repeat task.wait() until game:IsLoaded()
-
--- Lấy player
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- Lấy HRP
 local function getCharacter()
     local character = player.Character or player.CharacterAdded:Wait()
     local hrp = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart")
     return hrp
 end
 
--- Lấy Hitbox
 local function getHitbox()
     local zoneName = getgenv().TeleportZoneName or "PartyZone2"
     local hitbox = workspace:WaitForChild("PartyZones", 10):WaitForChild(zoneName, 10):WaitForChild("Hitbox", 10)
     return hitbox
 end
 
--- Hàm tạo party
 local function createParty(mode)
     local args = {{
         isPrivate = true,
@@ -41,7 +89,6 @@ local function createParty(mode)
         :WaitForChild("RemoteEvent"):WaitForChild("CreateParty"):FireServer(unpack(args))
 end
 
--- Thực hiện teleport
 local success, err = pcall(function()
     local hrp = getCharacter()
     local hitbox = getHitbox()
@@ -53,11 +100,8 @@ local success, err = pcall(function()
     end
 end)
 
-if not success then
-    warn("Teleport bị lỗi:", err)
-end
+if not success then warn("Teleport bị lỗi:", err) end
 
--- Chờ 5 giây rồi tạo party
 task.delay(5, function()
     if getgenv().EnableParty then
         if getgenv().EnableParty.Normal then createParty("Normal") end
@@ -65,11 +109,11 @@ task.delay(5, function()
         if getgenv().EnableParty.Nightmare then createParty("Nightmare") end
     end
 end)
-
 -- ==========================
--- Tạo UI Mochi Hub
+-- 🧩 UI Mochi Hub
+-- có thể tự xóa ui
 -- ==========================
-if game.CoreGui:FindFirstChild("NexonUI") then
+if game.CoreGui:FindFirstChild("MochiUI") then
     game.CoreGui.NexonUI:Destroy()
 end
 
@@ -147,7 +191,7 @@ discord.TextColor3 = Color3.fromRGB(150, 150, 255)
 discord.TextXAlignment = Enum.TextXAlignment.Center
 
 -- ==========================
--- Logic Bond, Auto Farm, MaximGun, Train
+-- 🔁 Bond, Auto Farm, MaximGun, Train
 -- ==========================
 if not game:IsLoaded() then game.Loaded:Wait() end
 repeat task.wait() until player.Character and player.PlayerGui:FindFirstChild("LoadingScreenPrefab") == nil
@@ -166,7 +210,7 @@ end)
 spawn(function()
     while bondLabel do
         bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
-        task.wait(0.3)
+        task.wait(0.1)
     end
 end)
 
@@ -174,7 +218,7 @@ player.CameraMode = "Classic"
 player.CameraMaxZoomDistance = math.huge
 player.CameraMinZoomDistance = 20
 player.Character.HumanoidRootPart.Anchored = true
-wait(0.5)
+wait(0.3)
 
 repeat task.wait()
     player.Character.HumanoidRootPart.Anchored = true
@@ -192,7 +236,7 @@ end
 
 task.wait(0.5)
 for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 400 then
+    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 200 then
         player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
     end
 end
@@ -206,7 +250,7 @@ wait(0.5)
 
 repeat task.wait()
     for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-        if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 400 then
+        if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 200 then
             player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
         end
     end
