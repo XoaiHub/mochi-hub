@@ -210,7 +210,7 @@ end)
 spawn(function()
     while bondLabel do
         bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
-        task.wait(0.5)
+        task.wait(0.1)
     end
 end)
 
@@ -218,7 +218,7 @@ player.CameraMode = "Classic"
 player.CameraMaxZoomDistance = math.huge
 player.CameraMinZoomDistance = 20
 player.Character.HumanoidRootPart.Anchored = true
-wait(0.5)
+wait(0.3)
 
 repeat task.wait()
     player.Character.HumanoidRootPart.Anchored = true
