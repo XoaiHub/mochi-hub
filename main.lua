@@ -81,7 +81,7 @@ end
 local function createParty(mode)
     local args = {{
         isPrivate = true,
-        maxMembers = 3,
+        maxMembers = 1,
         trainId = "default",
         gameMode = mode
     }}
