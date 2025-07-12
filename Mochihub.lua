@@ -210,7 +210,7 @@ end)
 spawn(function()
     while bondLabel do
         bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
-        task.wait(0.1)
+        task.wait(0.3
     end
 end)
 
@@ -256,7 +256,7 @@ repeat task.wait()
     end
 until player.Character.Humanoid.Sit == true
 
-wait(0.5)
+wait(0.9)
 for _, v in pairs(workspace:GetChildren()) do
     if v:IsA("Model") and v:FindFirstChild("RequiredComponents") and v.RequiredComponents:FindFirstChild("Controls") and v.RequiredComponents.Controls:FindFirstChild("ConductorSeat") then
         local seat = v.RequiredComponents.Controls.ConductorSeat:FindFirstChild("VehicleSeat")
@@ -273,7 +273,7 @@ for _, v in pairs(workspace:GetChildren()) do
     end
 end
 
-wait(0.5)
+wait(0.9)
 while true do
     if player.Character.Humanoid.Sit then
         local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(50, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
