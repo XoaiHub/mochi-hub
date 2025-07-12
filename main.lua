@@ -256,7 +256,7 @@ repeat task.wait()
     end
 until player.Character.Humanoid.Sit == true
 
-wait(1)
+wait(0.9)
 for _, v in pairs(workspace:GetChildren()) do
     if v:IsA("Model") and v:FindFirstChild("RequiredComponents") and v.RequiredComponents:FindFirstChild("Controls") and v.RequiredComponents.Controls:FindFirstChild("ConductorSeat") then
         local seat = v.RequiredComponents.Controls.ConductorSeat:FindFirstChild("VehicleSeat")
@@ -273,7 +273,7 @@ for _, v in pairs(workspace:GetChildren()) do
     end
 end
 
-wait(2)
+wait(1)
 while true do
     if player.Character.Humanoid.Sit then
         local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(50, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
