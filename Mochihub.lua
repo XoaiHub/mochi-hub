@@ -176,7 +176,7 @@ end)
 spawn(function()
     while bondLabel do
         bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
-        task.wait(0.5)
+        task.wait(2)
     end
 end)
 
@@ -184,14 +184,14 @@ player.CameraMode = "Classic"
 player.CameraMaxZoomDistance = math.huge
 player.CameraMinZoomDistance = 30
 player.Character.HumanoidRootPart.Anchored = true
-wait(0.2)
+wait(0.3)
 
 repeat task.wait()
     player.Character.HumanoidRootPart.Anchored = true
     player.Character.HumanoidRootPart.CFrame = CFrame.new(80, 3, -9000)
 until workspace.RuntimeItems:FindFirstChild("MaximGun")
 
-task.wait(0.1)
+task.wait(0.3)
 for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
     if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") then
         v.VehicleSeat.Disabled = false
@@ -200,7 +200,7 @@ for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
     end
 end
 
-task.wait(0.1)
+task.wait(0.5)
 for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
     if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 250 then
         player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
@@ -227,7 +227,7 @@ for _, v in pairs(workspace:GetChildren()) do
     if v:IsA("Model") and v:FindFirstChild("RequiredComponents") and v.RequiredComponents:FindFirstChild("Controls") and v.RequiredComponents.Controls:FindFirstChild("ConductorSeat") then
         local seat = v.RequiredComponents.Controls.ConductorSeat:FindFirstChild("VehicleSeat")
         if seat then
-            local TpTrain = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(55, Enum.EasingStyle.Quad), {CFrame = seat.CFrame * CFrame.new(0, 20, 0)})
+            local TpTrain = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(35, Enum.EasingStyle.Quad), {CFrame = seat.CFrame * CFrame.new(0, 20, 0)})
             TpTrain:Play()
             local bv = Instance.new("BodyVelocity")
             bv.Name = "VelocityHandler"
@@ -242,7 +242,7 @@ end
 wait(1)
 while true do
     if player.Character.Humanoid.Sit then
-        local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(50, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
+        local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(30, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
         TpEnd:Play()
         local bv = Instance.new("BodyVelocity")
         bv.Name = "VelocityHandler"
