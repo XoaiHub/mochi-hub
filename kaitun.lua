@@ -81,7 +81,7 @@ end
 local function createParty(mode)
     local args = {{
         isPrivate = true,
-        maxMembers = 3,
+        maxMembers = 1,
         trainId = "default",
         gameMode = mode
     }}
@@ -210,7 +210,7 @@ end)
 spawn(function()
     while bondLabel do
         bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
-        task.wait(0.1)
+        task.wait(0.3
     end
 end)
 
@@ -273,7 +273,7 @@ for _, v in pairs(workspace:GetChildren()) do
     end
 end
 
-wait(1)
+wait(0.9)
 while true do
     if player.Character.Humanoid.Sit then
         local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(50, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
