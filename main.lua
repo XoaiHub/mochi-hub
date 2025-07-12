@@ -146,8 +146,8 @@ logo.Image = "rbxassetid://..."
 logo.ScaleType = Enum.ScaleType.Fit
 
 local bondLabel = Instance.new("TextLabel", bondFrame)
-bondLabel.Size = UDim2.new(1, -20, 1, 0)
-bondLabel.Position = UDim2.new(0, 50, 0, 0)
+bondLabel.Size = UDim2.new(1, -30, 1, 0)
+bondLabel.Position = UDim2.new(0, 50, 0, -50)
 bondLabel.BackgroundTransparency = 1
 bondLabel.Text = "Bond (+0)"
 bondLabel.TextSize = 40
