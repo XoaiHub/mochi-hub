@@ -206,16 +206,17 @@ workspace.RuntimeItems.ChildAdded:Connect(function(v)
         end)
     end
 end)
+
 spawn(function()
     while bondLabel do
         bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
-        task.wait(0.3)
+        task.wait(0.1)
     end
 end)
 
 player.CameraMode = "Classic"
 player.CameraMaxZoomDistance = math.huge
-player.CameraMinZoomDistance = 20
+player.CameraMinZoomDistance = 30
 player.Character.HumanoidRootPart.Anchored = true
 wait(0.3)
 
@@ -233,7 +234,7 @@ for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
     end
 end
 
-task.wait(0.2)
+task.wait(0.1)
 for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
     if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 250 then
         player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
@@ -272,7 +273,7 @@ for _, v in pairs(workspace:GetChildren()) do
     end
 end
 
-wait(0.9)
+wait(1)
 while true do
     if player.Character.Humanoid.Sit then
         local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(50, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
