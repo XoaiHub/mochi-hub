@@ -146,11 +146,11 @@ logo.Image = "rbxassetid://..."
 logo.ScaleType = Enum.ScaleType.Fit
 
 local bondLabel = Instance.new("TextLabel", bondFrame)
-bondLabel.Size = UDim2.new(1, -30, 1, 0)
-bondLabel.Position = UDim2.new(0, 30, 0, 0)
+bondLabel.Size = UDim2.new(1, -20, 1, 0)
+bondLabel.Position = UDim2.new(0, 50, 0, 0)
 bondLabel.BackgroundTransparency = 1
 bondLabel.Text = "Bond (+0)"
-bondLabel.TextSize = 20
+bondLabel.TextSize = 40
 bondLabel.Font = Enum.Font.Gotham
 bondLabel.TextColor3 = Color3.new(1, 1, 1)
 bondLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -227,7 +227,7 @@ for _, v in pairs(workspace:GetChildren()) do
     if v:IsA("Model") and v:FindFirstChild("RequiredComponents") and v.RequiredComponents:FindFirstChild("Controls") and v.RequiredComponents.Controls:FindFirstChild("ConductorSeat") then
         local seat = v.RequiredComponents.Controls.ConductorSeat:FindFirstChild("VehicleSeat")
         if seat then
-            local TpTrain = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(40, Enum.EasingStyle.Quad), {CFrame = seat.CFrame * CFrame.new(0, 20, 0)})
+            local TpTrain = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(35, Enum.EasingStyle.Quad), {CFrame = seat.CFrame * CFrame.new(0, 20, 0)})
             TpTrain:Play()
             local bv = Instance.new("BodyVelocity")
             bv.Name = "VelocityHandler"
@@ -242,7 +242,7 @@ end
 wait(1)
 while true do
     if player.Character.Humanoid.Sit then
-        local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(35, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
+        local TpEnd = game:GetService("TweenService"):Create(player.Character.HumanoidRootPart, TweenInfo.new(30, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
         TpEnd:Play()
         local bv = Instance.new("BodyVelocity")
         bv.Name = "VelocityHandler"
