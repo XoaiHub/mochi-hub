@@ -206,11 +206,10 @@ workspace.RuntimeItems.ChildAdded:Connect(function(v)
         end)
     end
 end)
-
 spawn(function()
     while bondLabel do
         bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
-        task.wait(0.3
+        task.wait(0.3)
     end
 end)
 
