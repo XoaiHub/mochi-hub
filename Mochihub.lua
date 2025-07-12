@@ -117,6 +117,16 @@ if game.CoreGui:FindFirstChild("MochiUI") then
     game.CoreGui.NexonUI:Destroy()
 end
 
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "MochiUi"
+gui.ResetOnSpawn = false
+
+local mainFrame = Instance.new("Frame", gui)
+mainFrame.Size = UDim2.new(0, 400, 0, 300)
+mainFrame.Position = UDim2.new(0.5, 0, 0.4, 0)
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.BackgroundTransparency = 1
+
 local bondFrame = Instance.new("Frame", mainFrame)
 bondFrame.Name = "BondUI"
 bondFrame.Size = UDim2.new(0, 180, 0, 30)
@@ -166,22 +176,22 @@ end)
 spawn(function()
     while bondLabel do
         bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
-        task.wait(0.1)
+        task.wait(0.5)
     end
 end)
 
 player.CameraMode = "Classic"
 player.CameraMaxZoomDistance = math.huge
-player.CameraMinZoomDistance = 20
+player.CameraMinZoomDistance = 30
 player.Character.HumanoidRootPart.Anchored = true
-wait(0.3)
+wait(0.2)
 
 repeat task.wait()
     player.Character.HumanoidRootPart.Anchored = true
     player.Character.HumanoidRootPart.CFrame = CFrame.new(80, 3, -9000)
 until workspace.RuntimeItems:FindFirstChild("MaximGun")
 
-task.wait(0.3)
+task.wait(0.1)
 for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
     if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") then
         v.VehicleSeat.Disabled = false
@@ -190,7 +200,7 @@ for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
     end
 end
 
-task.wait(0.2)
+task.wait(0.1)
 for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
     if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 250 then
         player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
