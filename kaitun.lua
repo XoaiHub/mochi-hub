@@ -117,39 +117,6 @@ if game.CoreGui:FindFirstChild("MochiUI") then
     game.CoreGui.NexonUI:Destroy()
 end
 
-local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "MochiUi"
-gui.ResetOnSpawn = false
-
-local mainFrame = Instance.new("Frame", gui)
-mainFrame.Size = UDim2.new(0, 400, 0, 300)
-mainFrame.Position = UDim2.new(0.5, 0, 0.4, 0)
-mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-mainFrame.BackgroundTransparency = 1
-
-local title = Instance.new("TextLabel", mainFrame)
-title.Size = UDim2.new(1, 0, 0, 50)
-title.Position = UDim2.new(0.5, 0, 0, 140)
-title.AnchorPoint = Vector2.new(0.5, 0)
-title.BackgroundTransparency = 1
-title.Text = "Mochi Hub"
-title.Font = Enum.Font.GothamBlack
-title.TextSize = 36
-title.TextColor3 = Color3.new(1, 1, 1)
-title.TextStrokeTransparency = 0.6
-title.TextXAlignment = Enum.TextXAlignment.Center
-
-local author = Instance.new("TextLabel", mainFrame)
-author.Size = UDim2.new(1, 0, 0, 30)
-author.Position = UDim2.new(0.5, 0, 0, 190)
-author.AnchorPoint = Vector2.new(0.5, 0)
-author.BackgroundTransparency = 1
-author.Text = "Mochi Kaitun"
-author.Font = Enum.Font.Gotham
-author.TextSize = 20
-author.TextColor3 = Color3.new(1, 1, 1)
-author.TextXAlignment = Enum.TextXAlignment.Center
-
 local bondFrame = Instance.new("Frame", mainFrame)
 bondFrame.Name = "BondUI"
 bondFrame.Size = UDim2.new(0, 180, 0, 30)
@@ -179,17 +146,6 @@ bondLabel.TextColor3 = Color3.new(1, 1, 1)
 bondLabel.TextXAlignment = Enum.TextXAlignment.Left
 bondLabel.TextYAlignment = Enum.TextYAlignment.Center
 
-local discord = Instance.new("TextLabel", mainFrame)
-discord.Size = UDim2.new(1, 0, 0, 30)
-discord.Position = UDim2.new(0.5, 0, 0, 265)
-discord.AnchorPoint = Vector2.new(0.5, 0)
-discord.BackgroundTransparency = 1
-discord.Text = "gg/comming soon"
-discord.Font = Enum.Font.Gotham
-discord.TextSize = 18
-discord.TextColor3 = Color3.fromRGB(150, 150, 255)
-discord.TextXAlignment = Enum.TextXAlignment.Center
-
 -- ==========================
 -- 🔁 Bond, Auto Farm, MaximGun, Train
 -- ==========================
@@ -216,7 +172,7 @@ end)
 
 player.CameraMode = "Classic"
 player.CameraMaxZoomDistance = math.huge
-player.CameraMinZoomDistance = 30
+player.CameraMinZoomDistance = 20
 player.Character.HumanoidRootPart.Anchored = true
 wait(0.3)
 
@@ -234,7 +190,7 @@ for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
     end
 end
 
-task.wait(0.1)
+task.wait(0.2)
 for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
     if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (player.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 250 then
         player.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
