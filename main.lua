@@ -146,14 +146,15 @@ logo.Image = "rbxassetid://..."
 logo.ScaleType = Enum.ScaleType.Fit
 
 local bondLabel = Instance.new("TextLabel", bondFrame)
-bondLabel.Size = UDim2.new(1, -50, 1, 0)
-bondLabel.Position = UDim2.new(0, -50, 0, -50)
+bondLabel.Size = UDim2.new(0, 300, 0, 50)  -- Width: 300px, Height: 50px (có thể tùy chỉnh)
+bondLabel.Position = UDim2.new(0.5, 0, 0.5, 0)  -- Giữa bondFrame
+bondLabel.AnchorPoint = Vector2.new(0.5, 0.5)  -- Căn giữa theo toạ độ gốc
 bondLabel.BackgroundTransparency = 1
 bondLabel.Text = "Bond (+0)"
 bondLabel.TextSize = 40
 bondLabel.Font = Enum.Font.Gotham
 bondLabel.TextColor3 = Color3.new(1, 1, 1)
-bondLabel.TextXAlignment = Enum.TextXAlignment.Left
+bondLabel.TextXAlignment = Enum.TextXAlignment.Center
 bondLabel.TextYAlignment = Enum.TextYAlignment.Center
 
 -- ==========================
