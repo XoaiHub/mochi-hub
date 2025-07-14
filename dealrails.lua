@@ -106,26 +106,21 @@ local function teleportTo(zoneName)
         hrp.CFrame = CFrame.new(hitbox.Position + Vector3.new(0, getgenv().YOffset or 5, 0))
         currentZone = zoneName
         partyCreated = false
-        print("[✅ Teleport đến]:", zoneName)
+        print("[✅ Đã teleport đến]:", zoneName)
     end
 end
 
--- Tạo Party (maxMembers lấy từ config tương ứng zone)
+-- Create Party
 local function createParty(mode)
-    local maxMembers = getgenv().TargetPlayersPerZone[currentZone] or 1
-    maxMembers = math.clamp(maxMembers, 1, 4) -- Giới hạn 1–4 người
-
     local args = {{
         isPrivate = true,
-        maxMembers = maxMembers,
+        maxMembers = 1,
         trainId = "default",
         gameMode = mode
     }}
-
     ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Network")
         :WaitForChild("RemoteEvent"):WaitForChild("CreateParty"):FireServer(unpack(args))
-
-    print(string.format("[🎉 Tạo Party: %s] | Số người: %d", mode, maxMembers))
+    print("[🎉 Đã tạo Party]:", mode)
 end
 
 -- Main loop
@@ -137,31 +132,40 @@ task.spawn(function()
     table.sort(zoneList)
 
     while getgenv().EnableTeleport do
-        if not partyCreated then
-            for _, zoneName in ipairs(zoneList) do
-                local target = getgenv().TargetPlayersPerZone[zoneName]
-                local current = getPlayerCountInZone(zoneName)
+        local teleported = false
 
-                print(string.format("🔍 [%s]: %d/%d", zoneName, current, target))
+        for _, zoneName in ipairs(zoneList) do
+            local target = getgenv().TargetPlayersPerZone[zoneName]
+            local current = getPlayerCountInZone(zoneName)
 
-                if current < target then
-                    if currentZone ~= zoneName then
-                        teleportTo(zoneName)
-                    end
+            print(string.format("🔍 [%s]: %d/%d", zoneName, current, target))
 
-                    task.wait(1)
-
-                    if currentZone == zoneName and not partyCreated then
-                        if getgenv().EnableParty then
-                            if getgenv().EnableParty["Normal"] then createParty("Normal") end
-                            if getgenv().EnableParty["ScorchedEarth"] then createParty("Scorched Earth") end
-                            if getgenv().EnableParty["Nightmare"] then createParty("Nightmare") end
-                        end
-                        partyCreated = true
-                    end
-                    break
+            if current < target then
+                if currentZone ~= zoneName then
+                    teleportTo(zoneName)
                 end
+
+                teleported = true
+
+                -- Đợi ổn định rồi tạo party
+                task.wait(1)
+
+                if currentZone == zoneName and not partyCreated then
+                    local partyModes = getgenv().EnableParty
+                    if partyModes then
+                        if partyModes["Normal"] then createParty("Normal") end
+                        if partyModes["ScorchedEarth"] then createParty("Scorched Earth") end
+                        if partyModes["Nightmare"] then createParty("Nightmare") end
+                    end
+                    partyCreated = true
+                end
+                break
             end
+        end
+
+        if not teleported then
+            currentZone = nil
+            print("⚠️ Không tìm được zone phù hợp, thử lại sau...")
         end
 
         task.wait(getgenv().TeleportInterval or 5)
@@ -169,224 +173,147 @@ task.spawn(function()
 end)
 
 -- ==========================
--- 🧩 UI Mochi Hub
--- có thể tự xóa ui
+-- 🧩 UI BondCheck + Farm Bond
 -- ==========================
-if game.CoreGui:FindFirstChild("MochiUI") then
-    game.CoreGui.NexonUI:Destroy()
+if not game:IsLoaded() then
+    game.Loaded:Wait()
 end
-
+repeat task.wait() until game.Players.LocalPlayer.Character and game.Players.LocalPlayer.PlayerGui:FindFirstChild("LoadingScreenPrefab") == nil
+game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("EndDecision"):FireServer(false)
+if game.CoreGui:FindFirstChild("BondCheck") == nil then
 local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "MochiUi"
-gui.ResetOnSpawn = false
+gui.Name = "BondCheck"
 
-local mainFrame = Instance.new("Frame", gui)
-mainFrame.Size = UDim2.new(0, 400, 0, 300)
-mainFrame.Position = UDim2.new(0.5, 0, 0.4, 0)
-mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-mainFrame.BackgroundTransparency = 1
+local Frame = Instance.new("Frame")
+Frame.Name = "Bond"
+Frame.Size = UDim2.new(0.13, 0, 0.1, 0)
+Frame.Position = UDim2.new(0.03, 0, 0.05, 0)
+Frame.BackgroundColor3 = Color3.new(1, 1, 1)
+Frame.BorderColor3 = Color3.new(0, 0, 0)
+Frame.BorderSizePixel = 1
+Frame.Active = true
+Frame.BackgroundTransparency = 0.3
+Frame.Draggable = true
+Frame.Parent = gui
 
-local bondFrame = Instance.new("Frame", mainFrame)
-bondFrame.Name = "BondUI"
-bondFrame.Size = UDim2.new(0, 180, 0, 30)
-bondFrame.Position = UDim2.new(0.5, 0, 0, 227)
-bondFrame.AnchorPoint = Vector2.new(0.5, 0)
-bondFrame.BackgroundTransparency = 1
-bondFrame.BorderSizePixel = 0
-bondFrame.Draggable = false
-bondFrame.Active = true
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = Frame
 
-local logo = Instance.new("ImageLabel", bondFrame)
-logo.Size = UDim2.new(0, 24, 0, 24)
-logo.Position = UDim2.new(0, 0, 0.5, 0)
-logo.AnchorPoint = Vector2.new(0, 0.5)
-logo.BackgroundTransparency = 1
-logo.Image = "rbxassetid://..."
-logo.ScaleType = Enum.ScaleType.Fit
+local UICorner = Instance.new("UIStroke")
+UICorner.Color = Color3.new(0, 0, 0)
+UICorner.Thickness = 2.3
+UICorner.Parent = Frame
 
-local bondLabel = Instance.new("TextLabel", bondFrame)
-bondLabel.Size = UDim2.new(0, 300, 0, 50)  -- Width: 300px, Height: 50px (có thể tùy chỉnh)
-bondLabel.Position = UDim2.new(0.5, 0, 0.5, 0)  -- Giữa bondFrame
-bondLabel.AnchorPoint = Vector2.new(0.5, 0.5)  -- Căn giữa theo toạ độ gốc
-bondLabel.BackgroundTransparency = 1
-bondLabel.Text = "Bond (+0)"
-bondLabel.TextSize = 40
-bondLabel.Font = Enum.Font.Gotham
-bondLabel.TextColor3 = Color3.new(1, 1, 1)
-bondLabel.TextXAlignment = Enum.TextXAlignment.Center
-bondLabel.TextYAlignment = Enum.TextYAlignment.Center
-
--- ==========================
--- 🔁 Bond, Auto Farm, MaximGun, Train
--- ==========================
-if not game:IsLoaded() then game.Loaded:Wait() end
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local player = Players.LocalPlayer
-
--- Chờ nhân vật load và UI biến mất
-repeat task.wait() until player.Character and player.PlayerGui:FindFirstChild("LoadingScreenPrefab") == nil
-
--- Hàm chờ nhân vật mới khi respawn
-local function waitForCharacter()
-    repeat task.wait() until player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    return player.Character
+local TextLabel = Instance.new("TextLabel")
+TextLabel.Size = UDim2.new(1, 0, 1, 0)
+TextLabel.Position = UDim2.new(0, 0, 0, 0)
+TextLabel.BackgroundColor3 = Color3.new(255, 255, 255)
+TextLabel.BorderColor3 = Color3.new(0, 0, 0)
+TextLabel.BorderSizePixel = 1
+TextLabel.Text = "Really"
+TextLabel.TextSize = 20
+TextLabel.FontFace = Font.new("rbxassetid://12187372175", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+TextLabel.BackgroundTransparency = 1
+TextLabel.TextColor3 = Color3.new(0, 0, 0)
+TextLabel.Parent = Frame
 end
-
--- Gọi lại play again
-ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("EndDecision"):FireServer(false)
-
--- Biến theo dõi Bond
 _G.Bond = 0
-
--- Theo dõi Bond mới sinh
-workspace:WaitForChild("RuntimeItems").ChildAdded:Connect(function(v)
-    if v.Name:find("Bond") and v:FindFirstChild("Part") then
-        v.Destroying:Connect(function()
-            _G.Bond += 1
-        end)
-    end
+workspace.RuntimeItems.ChildAdded:Connect(function(v)
+	if v.Name:find("Bond") and v:FindFirstChild("Part") then
+		v.Destroying:Connect(function()
+			_G.Bond += 1
+		end)
+	end
 end)
-
--- Cập nhật UI
 spawn(function()
-    while bondLabel do
-        bondLabel.Text = "Bond (+" .. tostring(_G.Bond) .. ")"
-        task.wait(2)
-    end
-end)
-
--- Đảm bảo camera
-player.CameraMode = "Classic"
-player.CameraMaxZoomDistance = math.huge
-player.CameraMinZoomDistance = 30
-
--- Teleport xuống dưới map + chờ MaximGun
-local char = waitForCharacter()
-local hrp = char:WaitForChild("HumanoidRootPart")
-hrp.Anchored = true
-hrp.CFrame = CFrame.new(80, 3, -9000)
-
-repeat task.wait() until workspace.RuntimeItems:FindFirstChild("MaximGun")
-
--- Ngồi vào MaximGun
-for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") then
-        local seat = v.VehicleSeat
-        seat.Disabled = false
-        seat:SetAttribute("Disabled", false)
-        seat:Sit(char:FindFirstChild("Humanoid"))
-    end
-end
-
--- Teleport lại gần để chắc chắn
-task.wait(0.5)
-for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-    if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (hrp.Position - v.VehicleSeat.Position).Magnitude < 250 then
-        hrp.CFrame = v.VehicleSeat.CFrame
-    end
-end
-
--- Chuẩn bị bay lên
-task.wait(1)
-hrp.Anchored = false
-repeat wait() until char.Humanoid.Sit == true
-task.wait(0.5)
-char.Humanoid.Sit = false
-task.wait(0.5)
-
--- Teleport lại cho chắc chắn ngồi
 repeat task.wait()
-    for _, v in pairs(workspace.RuntimeItems:GetChildren()) do
-        if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (hrp.Position - v.VehicleSeat.Position).Magnitude < 250 then
-            hrp.CFrame = v.VehicleSeat.CFrame
-        end
-    end
-until char.Humanoid.Sit == true
-
--- Bay đến Conductor
-task.wait(0.9)
-for _, v in pairs(workspace:GetChildren()) do
-    if v:IsA("Model") and v:FindFirstChild("RequiredComponents") then
-        local seat = v.RequiredComponents:FindFirstChild("Controls") and v.RequiredComponents.Controls:FindFirstChild("ConductorSeat") and v.RequiredComponents.Controls.ConductorSeat:FindFirstChild("VehicleSeat")
-        if seat then
-            local tween = TweenService:Create(hrp, TweenInfo.new(35, Enum.EasingStyle.Quad), {CFrame = seat.CFrame * CFrame.new(0, 20, 0)})
-            tween:Play()
-            local bv = Instance.new("BodyVelocity")
-            bv.Name = "VelocityHandler"
-            bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-            bv.Velocity = Vector3.new(0, 0, 0)
-            bv.Parent = hrp
-            tween.Completed:Wait()
-            bv:Destroy()
-        end
-    end
+if game.CoreGui.BondCheck:FindFirstChild("Bond") and game.CoreGui.BondCheck.Bond:FindFirstChild("TextLabel") then
+game.CoreGui.BondCheck.Bond:FindFirstChild("TextLabel").Text = "Bond (+".._G.Bond..")"
 end
-
--- Lặp auto farm Bond
-task.wait(0.9)
-while true do
-    if char and char:FindFirstChild("Humanoid") and char.Humanoid.Sit then
-        -- Teleport vào khu farm
-        local tp = TweenService:Create(hrp, TweenInfo.new(30, Enum.EasingStyle.Quad), {CFrame = CFrame.new(0.5, -78, -49429)})
-        tp:Play()
-
-        local bv = Instance.new("BodyVelocity")
-        bv.Name = "VelocityHandler"
-        bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-        bv.Velocity = Vector3.new(0, 0, 0)
-        bv.Parent = hrp
-
-        -- Đợi bond xuất hiện
-        repeat wait() until workspace.RuntimeItems:FindFirstChild("Bond")
-        tp:Cancel()
-        bv:Destroy()
-
-        -- Nhặt từng bond
-        for _, bond in pairs(workspace.RuntimeItems:GetChildren()) do
-            if bond.Name:find("Bond") and bond:FindFirstChild("Part") then
-                repeat task.wait()
-                    if bond and bond:FindFirstChild("Part") then
-                        hrp.CFrame = bond.Part.CFrame
-                        ReplicatedStorage.Shared.Network.RemotePromise.Remotes.C_ActivateObject:FireServer(bond)
-                    end
-                until not bond:FindFirstChild("Part")
-            end
-        end
-    end
-    task.wait(1)
-end
-
--- ==========================
--- auto Rejoin tránh lỗi
--- ==========================
-if not getgenv().AutoRejoinConfig or not getgenv().AutoRejoinConfig["Enabled"] then return end
-
-local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local LocalPlayer = Players.LocalPlayer
-local placeId = game.PlaceId
-
--- chỉnh ở ngoài config
-local minutes = tonumber(getgenv().AutoRejoinConfig["RejoinDelay"]) or 60
-minutes = math.clamp(minutes, 1, 9999)
-
-local totalSeconds = minutes * 60
-local startTime = os.time()
-
-task.spawn(function()
-    while true do
-        task.wait(1)
-        local elapsed = os.time() - startTime
-        if elapsed >= totalSeconds then
-            pcall(function()
-                LocalPlayer:Kick("Auto Rejoin sau " .. minutes .. " phút.")
-            end)
-            task.wait(3)
-            TeleportService:Teleport(placeId, LocalPlayer)
-            break
-        end
-    end
+until game.CoreGui:FindFirstChild("BondCheck") == nil
 end)
+if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+game.Workspace.CurrentCamera.CameraSubject = game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+end
+game.Players.LocalPlayer.CameraMode = "Classic"
+game.Players.LocalPlayer.CameraMaxZoomDistance = math.huge
+game.Players.LocalPlayer.CameraMinZoomDistance = 30
+game.Players.LocalPlayer.Character.HumanoidRootPart.Anchored = true
+wait(0.3)
+repeat task.wait()
+game.Players.LocalPlayer.Character.HumanoidRootPart.Anchored = true
+wait(0.3)
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(80, 3, -9000)
+repeat task.wait() until workspace.RuntimeItems:FindFirstChild("MaximGun")
+wait(0.2)
+for i, v in pairs(workspace.RuntimeItems:GetChildren()) do
+if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") then
+v.VehicleSeat.Disabled = false
+v.VehicleSeat:SetAttribute("Disabled", false)
+v.VehicleSeat:Sit(game.Players.LocalPlayer.Character:FindFirstChild("Humanoid"))
+end
+end
+wait(0.5)
+for i, v in pairs(workspace.RuntimeItems:GetChildren()) do
+if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 400 then
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
+end
+end
+wait(1)
+game.Players.LocalPlayer.Character.HumanoidRootPart.Anchored = false
+until game.Players.LocalPlayer.Character:FindFirstChild("Humanoid").Sit == true
+wait(0.5)
+game.Players.LocalPlayer.Character:FindFirstChild("Humanoid").Sit = false
+wait(0.5)
+repeat task.wait()
+for i, v in pairs(workspace.RuntimeItems:GetChildren()) do
+if v.Name == "MaximGun" and v:FindFirstChild("VehicleSeat") and (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - v.VehicleSeat.Position).Magnitude < 400 then
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.VehicleSeat.CFrame
+end
+end
+until game.Players.LocalPlayer.Character:FindFirstChild("Humanoid").Sit == true
+wait(0.9)
+for i, v in pairs(workspace:GetChildren()) do
+if v:IsA("Model") and v:FindFirstChild("RequiredComponents") then
+if v.RequiredComponents:FindFirstChild("Controls") and v.RequiredComponents.Controls:FindFirstChild("ConductorSeat") and v.RequiredComponents.Controls.ConductorSeat:FindFirstChild("VehicleSeat") then
+TpTrain = game:GetService("TweenService"):Create(game.Players.LocalPlayer.Character.HumanoidRootPart, TweenInfo.new(25, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {CFrame = v.RequiredComponents.Controls.ConductorSeat:FindFirstChild("VehicleSeat").CFrame * CFrame.new(0, 20, 0)})
+TpTrain:Play()
+if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid") and game.Players.LocalPlayer.Character.Humanoid.RootPart and game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("VelocityHandler") == nil then
+local bv = Instance.new("BodyVelocity")
+bv.Name = "VelocityHandler"
+bv.Parent = game.Players.LocalPlayer.Character.HumanoidRootPart
+bv.MaxForce = Vector3.new(100000, 100000, 100000)
+bv.Velocity = Vector3.new(0, 0, 0)
+end
+TpTrain.Completed:Wait()
+end
+end
+end
+wait(1)
+while true do
+if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid").Sit == true then
+TpEnd = game:GetService("TweenService"):Create(game.Players.LocalPlayer.Character.HumanoidRootPart, TweenInfo.new(17, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {CFrame = CFrame.new(0.5, -78, -49429)})
+TpEnd:Play()
+if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid") and game.Players.LocalPlayer.Character.Humanoid.RootPart and game.Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("VelocityHandler") == nil then
+local bv = Instance.new("BodyVelocity")
+bv.Name = "VelocityHandler"
+bv.Parent = game.Players.LocalPlayer.Character.HumanoidRootPart
+bv.MaxForce = Vector3.new(100000, 100000, 100000)
+bv.Velocity = Vector3.new(0, 0, 0)
+end
+repeat task.wait() until workspace.RuntimeItems:FindFirstChild("Bond")
+TpEnd:Cancel()
+for i, v in pairs(workspace.RuntimeItems:GetChildren()) do
+if v.Name:find("Bond") and v:FindFirstChild("Part") then
+repeat task.wait()
+if v:FindFirstChild("Part") then
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v:FindFirstChild("Part").CFrame
+game:GetService("ReplicatedStorage").Shared.Network.RemotePromise.Remotes.C_ActivateObject:FireServer(v)
+end
+until v:FindFirstChild("Part") == nil
+end
+end
+end
+task.wait()
+end
