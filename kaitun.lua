@@ -1,26 +1,30 @@
--- === Mochi Loader (check key -> load script) ===
+-- === Mochi Loader (yêu cầu key) ===
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Đổi sang API server public của bạn (nên dùng HTTPS)
+-- API server của bạn (nên deploy HTTPS khi public)
 local API_BASE = "http://127.0.0.1:8000"
 
+-- ⚠️ Người dùng phải dán key vào đây
+local script_key = "PASTE_YOUR_KEY_HERE"
+
+-- Hàm kick kèm thông báo
 local function Kick(msg)
     pcall(function() LocalPlayer:Kick(tostring(msg)) end)
     task.wait(0.1)
     return
 end
 
--- 1) Kiểm tra key (yêu cầu dán trước vào biến script_key)
+-- 1) Kiểm tra key
 if not script_key or type(script_key) ~= "string" or #script_key < 8 then
-    return Kick("[Mochi] Chưa có key.\nVào Discord gõ /getscript để lấy key.")
+    return Kick("[Mochi] ❌ Chưa có key.\nVào Discord gõ /getscript để lấy key.")
 end
 
--- 2) Gọi API check key
-local function checkAuth(k)
+-- 2) Gọi API getscript (server sẽ vừa check key, vừa trả script)
+local function fetchScript(k)
     local hwid = tostring(LocalPlayer.UserId)
-    local url = string.format("%s/api/check/%s/%s",
+    local url = string.format("%s/api/getscript/%s/%s",
         API_BASE,
         HttpService:UrlEncode(k),
         HttpService:UrlEncode(hwid)
@@ -30,28 +34,29 @@ local function checkAuth(k)
         return game:HttpGet(url)
     end)
     if not ok then
-        return false, "auth_request_failed"
+        return nil, "auth_request_failed"
     end
 
     local ok2, res = pcall(function()
         return HttpService:JSONDecode(body)
     end)
     if not ok2 or type(res) ~= "table" then
-        return false, "bad_response"
+        return nil, "bad_response"
     end
 
-    if res.ok then
-        return true, res.msg or "ok"
+    if res.ok and res.script then
+        return res.script, res.msg
     else
-        return false, tostring(res.msg or "unauthorized")
+        return nil, tostring(res.msg or "unauthorized")
     end
 end
 
-local allowed, reason = checkAuth(script_key)
-if not allowed then
+-- 3) Lấy script thật nếu key hợp lệ
+local coreScript, reason = fetchScript(script_key)
+if not coreScript then
     local r = tostring(reason):lower()
     if r:find("max_tabs_exceeded") then
-        return Kick("[Mochi] Key đã đạt giới hạn số tab.\nHãy đóng tab khác hoặc chờ admin reset HWID.")
+        return Kick("[Mochi] Key đã đạt giới hạn số tab.\nĐóng tab khác hoặc chờ admin reset HWID.")
     elseif r:find("hết tab") then
         return Kick("[Mochi] Key đã hết tab.")
     elseif r:find("đã đạt số máy tối đa") then
@@ -65,14 +70,10 @@ if not allowed then
     end
 end
 
--- 3) Key hợp lệ -> tải script thật
--- ❌ KHÔNG hard-code master nữa
--- ✅ Trùng với SCRIPT_URL trong .env của server (branch main)
-local CORE_URL = "https://raw.githubusercontent.com/XoaiHub/mochi-hub/refs/heads/main/Kaitun%2099Night"
-
+-- 4) Chạy script thật
 local ok, err = pcall(function()
-    loadstring(game:HttpGet(CORE_URL))()
+    loadstring(coreScript)()
 end)
 if not ok then
-    return Kick("[Mochi] Không tải được core script.\nLỗi: " .. tostring(err))
+    return Kick("[Mochi] Không chạy được core script.\nLỗi: " .. tostring(err))
 end
