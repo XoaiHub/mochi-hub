@@ -3,13 +3,17 @@
   - Người dùng cần đặt License trước khi chạy:
       License = "KEY_CUA_BAN"
       loadstring(game:HttpGet("https://yourdomain.com/Init.lua"))()
-  - Loader sẽ gọi API /api/check → nếu OK thì tải script hack thật (script.lua) từ SCRIPT_URL và chạy.
+  - Loader sẽ gọi API /api/check → nếu OK thì tải script thật (SCRIPT_URL) và chạy.
   - Nếu key sai/hết hạn/đủ tab → Kick.
 ]]
 
 -- ========== CONFIG ==========
-local API_BASE   = "http://127.0.0.1:8000" -- đổi thành domain/VPS của bạn
-local SCRIPT_URL = "https://raw.githubusercontent.com/XoaiHub/mochi-hub/refs/heads/master/Kaitun%2099Night.lua" -- đường dẫn script thật
+-- Thứ tự thử: IP public trước, nếu không vào được mới thử localhost (khi bot+API cùng VPS)
+local API_BASES = {
+    "http://103.249.117.233:8000", -- PUBLIC (sửa thành domain nếu có SSL)
+    "http://127.0.0.1:8000"        -- LOCALHOST fallback
+}
+local SCRIPT_URL = "https://raw.githubusercontent.com/XoaiHub/mochi-hub/refs/heads/master/Kaitun%2099Night.lua"
 
 -- ========== Services ==========
 local Players = game:GetService("Players")
@@ -51,13 +55,13 @@ local function identify_hwid()
     return tostring(hwid or "UNKNOWN")
 end
 
--- HTTP GET
+-- HTTP GET (ưu tiên exploit request nếu có)
 local function http_get(url)
     local req = (syn and syn.request) or http_request or request
     if req then
         local r = req({Url=url, Method="GET"})
         if r and r.StatusCode == 200 then return true, r.Body end
-        return false, r and r.Body or "HTTP Error"
+        return false, r and r.Body or ("HTTP Error to: "..url)
     else
         local ok, res = pcall(function() return game:HttpGet(url) end)
         if ok then return true, res end
@@ -79,18 +83,23 @@ end
 -- Lấy HWID
 local HWID = identify_hwid()
 
--- Gọi API check key
-local url = API_BASE .. "/api/check?license=" .. urlencode(License) .. "&hwid=" .. urlencode(HWID)
-local ok, body = http_get(url)
-if not ok then return Kick("❌ Không kết nối được API.") end
-
-local data
-pcall(function() data = HttpService:JSONDecode(body) end)
-if not data or not data.ok then
-    local msg = (data and data.msg) or "❌ Key không hợp lệ."
-    if msg == "max_tabs_exceeded" then
-        msg = "❌ Key đã đạt số tab tối đa."
+-- Gọi API check key (thử lần lượt các API_BASES)
+local data, lastErr
+for _, BASE in ipairs(API_BASES) do
+    local url = BASE .. "/api/check?license=" .. urlencode(License) .. "&hwid=" .. urlencode(HWID)
+    local ok, body = http_get(url)
+    if ok then
+        local okDecode, parsed = pcall(function() return HttpService:JSONDecode(body) end)
+        if okDecode then data = parsed break end
+        lastErr = "JSON decode error"
+    else
+        lastErr = body
     end
+end
+
+if not data or not data.ok then
+    local msg = (data and data.msg) or (lastErr or "❌ Không kết nối được API.")
+    if msg == "max_tabs_exceeded" then msg = "❌ Key đã đạt số tab tối đa." end
     return Kick(msg)
 end
 
