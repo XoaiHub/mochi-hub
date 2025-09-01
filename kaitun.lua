@@ -8,7 +8,7 @@
 ]]
 
 -- ========== CONFIG ==========
-local API_BASE   = "http://103.249.117.233:8000" -- đổi thành domain/VPS của bạn
+local API_BASE   = "http://127.0.0.1:8000" -- đổi thành domain/VPS của bạn
 local SCRIPT_URL = "https://raw.githubusercontent.com/XoaiHub/mochi-hub/refs/heads/master/Kaitun%2099Night.lua" -- đường dẫn script thật
 
 -- ========== Services ==========
