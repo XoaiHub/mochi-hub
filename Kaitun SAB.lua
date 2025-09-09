@@ -1,5 +1,3 @@
-
-
 local player = game:GetService("Players").LocalPlayer
 local vu = game:GetService("VirtualUser")
 player.Idled:connect(function()
@@ -35,8 +33,9 @@ local TaskManager = {
         LOCK = 1,
         SELL = 2,
         BUY = 3,
-        COLLECT = 4,
-        WAIT = 5
+        OPEN = 4,
+        COLLECT = 5,
+        WAIT = 6
     },
     isProcessing = false,
     taskLock = false
@@ -60,7 +59,7 @@ local function isDuplicateTask(newTask)
                 return true
             end
         elseif newTask.type == TaskManager.currentTask.type and newTask.action == TaskManager.currentTask.action then
-            if newTask.type == "COLLECT" or newTask.type == "WAIT" or newTask.type == "LOCK" or newTask.type == "SELL" then
+            if newTask.type == "COLLECT" or newTask.type == "WAIT" or newTask.type == "LOCK" or newTask.type == "SELL" or newTask.type == "OPEN" then
                 return true
             end
         end
@@ -74,7 +73,7 @@ local function isDuplicateTask(newTask)
                     return true
                 end
             elseif newTask.type == task.type and newTask.action == task.action then
-                if newTask.type == "COLLECT" or newTask.type == "WAIT" or newTask.type == "LOCK" or newTask.type == "SELL" then
+                if newTask.type == "COLLECT" or newTask.type == "WAIT" or newTask.type == "LOCK" or newTask.type == "SELL" or newTask.type == "OPEN" then
                     return true
                 end
             end
@@ -89,7 +88,7 @@ local function isDuplicateTask(newTask)
                     return true
                 end
             elseif newTask.type == task.type and newTask.action == task.action then
-                if newTask.type == "COLLECT" or newTask.type == "WAIT" or newTask.type == "LOCK" or newTask.type == "SELL" then
+                if newTask.type == "COLLECT" or newTask.type == "WAIT" or newTask.type == "LOCK" or newTask.type == "SELL" or newTask.type == "OPEN" then
                     return true
                 end
             end
@@ -676,6 +675,11 @@ local function GetAnimalsInfo()
 end
 
 local function GetAINfo(Name)
+    if Name:find("Lucky Block") then 
+        local Oldd = Animals[Name]
+        Oldd.Generation = 99999999999999
+        return Oldd
+    end
     return Animals[Name]
 end
 
@@ -796,7 +800,9 @@ local function getAnimalsToSell(targetBuyInfo)
                 canSell = false
             end
         end
-        
+        if canSell and animalInfo.DisplayName:find('Lucky Block') then 
+            canSell = false 
+        end
         if canSell then
             table.insert(sellableAnimals, {
                 podName = podName,
@@ -841,13 +847,14 @@ local function getLowestAnimal()
     return lowestPod, lowestInfo
 end
 
+local storageFullByNotification = false -- Define this variable
 local function isStorageFull()
     local slotsFull = CurrentUsedSlots >= getSlots()
     return storageFullByNotification or slotsFull
 end
 
 local function shouldBuyAnimal(targetAnimalInfo, genarationSpeed)
-    if targetAnimalInfo.Rarity == "Secret" then
+    if targetAnimalInfo.Rarity == "Secret" or targetAnimalInfo.DisplayName == "Lucky Block" then
         return true
     end
 
@@ -882,7 +889,6 @@ local function RemoteSell(animalId)
     local remote = game:GetService("ReplicatedStorage").Packages.Net:FindFirstChild("RE/PlotService/Sell")
     if remote then
         remote:FireServer(unpack(args))
-        print("RemoteSell: Sent sell request for animalId:", animalId)
     end
 end
 
@@ -993,13 +999,17 @@ local function meetsRebirthRequirements()
     end
     return true
 end
-
+ 
 local function AutoRebirth()
     if getgenv().Configcuttay["Settings"]["Auto Rebirth"] then
         if meetsRebirthRequirements() then
             game:GetService("ReplicatedStorage").Packages.Net["RF/Rebirth/RequestRebirth"]:InvokeServer()
             print('rb')
-            processTasks()
+            if not game.PrivateServerId or game.PrivateServerId == '' then
+          game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, game.Players.LocalPlayer)  
+            else
+            game:GetService("TeleportService"):TeleportToPrivateServer(game.PlaceId, game.PrivateServerId, {game.Players.LocalPlayer}) 
+            end
         end
     end
 end
@@ -1685,6 +1695,37 @@ local function TaskBuyAnimal(data)
     until CurrentCash < initialCash
 end
 
+local function FindLuckyBlockInMyAnimal()
+            local Podium = getBase():WaitForChild("AnimalPodiums", 1)
+            if not Podium then return end
+            for _,v in pairs(Podium:GetChildren()) do 
+                if v.Base and v.Base:FindFirstChild("Spawn") and v.Base.Spawn:FindFirstChild("PromptAttachment") then
+                    for __,v2 in pairs(v.Base.Spawn.PromptAttachment:GetChildren()) do 
+                        if v2.ActionText == "Open" then 
+                            return v 
+                        end
+                    end
+                end 
+            end
+        end
+local function UnboxLuckyBlockRemote(LuckyBlock)
+            print("Firing",tonumber(LuckyBlock.Name))
+            local args = {
+                [1] = tonumber(LuckyBlock.Name)
+            }
+            game:GetService("ReplicatedStorage").Packages.Net:FindFirstChild("RE/PlotService/Open"):FireServer(unpack(args))
+            task.wait(3)
+        end
+
+local function TaskUnboxLuckyBlock(data)
+    local luckyBlock = data.LuckyBlock
+    if luckyBlock and luckyBlock.Parent then
+        UnboxLuckyBlockRemote(luckyBlock)
+    else
+        print("TaskUnboxLuckyBlock: Lucky block is no longer available.")
+    end
+end
+
 
 local Animals = require(game:GetService("ReplicatedStorage").Datas.Animals)
 workspace.ChildAdded:Connect(function(v)
@@ -1710,8 +1751,6 @@ workspace.ChildAdded:Connect(function(v)
     local AnimalInfo = GetAINfo(displayName.Text)
     AnimalInfo.GenPerSecond = genarationSpeed.Text
     -- local LowestAnimal, LowestAnimalInfo = getLowestAnimal()
-    print("Checked",v.Name," is",tostring(v:GetAttribute("Index")))
-
     if AnimalInfo then
         if getgenv().Configcuttay["Settings"]["Auto Buy Animals"] then
             local isDesiredRarity = tableContains(getgenv().Configcuttay["Rarity"], AnimalInfo.Rarity)
@@ -1742,6 +1781,7 @@ workspace.ChildAdded:Connect(function(v)
                         
                         print("pass181")
                         if addTask(buyTask) then
+                            print("Buy",v.Name," is",tostring(v:GetAttribute("Index")))
                             print("pass182")
                             print('buydata',buyData)
                             print('buypr',buyPriority)
@@ -1851,7 +1891,7 @@ local function TPToLock()
     -- else
     --     Tween(Base.Purchases.PlotBlock.Hitbox.CFrame, getTPTime(Base.Purchases.PlotBlock.Hitbox.CFrame, humanoidRootPart.CFrame))
     -- end
-    PathfindTo(getBase().Purchases.PlotBlock.Hitbox.CFrame)
+    PathfindTo2(getBase().Purchases.PlotBlock.Hitbox.CFrame)
 end
 
 local function isLocked(base)
@@ -2004,10 +2044,10 @@ local function AutoCollect()
         if cancelCollectFlag then return end
         pcall(function()
             if tonumber(v.Name) < 11 then
-                PathfindTo(v:WaitForChild("Claim", 5):WaitForChild("Hitbox", 5).CFrame)
+                PathfindTo2(v:WaitForChild("Claim", 5):WaitForChild("Hitbox", 5).CFrame)
             elseif tonumber(v.Name) > 10 then
                 table.insert(F2Pods, v)
-                PathfindTo(v:WaitForChild("Claim", 5):WaitForChild("Hitbox", 5).CFrame)
+                PathfindTo2(v:WaitForChild("Claim", 5):WaitForChild("Hitbox", 5).CFrame)
             end
         end)
     end
@@ -2174,6 +2214,15 @@ spawn(function()
     local lastCollectTime = 0
     while wait() do
         
+        local luckyBlockToUnbox = FindLuckyBlockInMyAnimal()
+        if luckyBlockToUnbox then
+            cancelTasks("COLLECT")
+            cancelTasks("WAIT")
+            local unboxTask = createTask("OPEN", TaskManager.priorities.OPEN, TaskUnboxLuckyBlock, { luckyBlockToUnbox = luckyBlockToUnbox })
+            if addTask(unboxTask) then
+                processTasks()
+            end
+        end
         
         local currentTime = tick()
         local elapsedTime = currentTime - startTime
@@ -2191,6 +2240,8 @@ spawn(function()
                 currentProgress = " Buying Animals: " .. animalName
             elseif TaskManager.currentTask.type == "SELL" then
                 currentProgress = "Selling Animals"
+            elseif TaskManager.currentTask.type == "OPEN" then
+                currentProgress = "Unboxing Lucky Block"
             elseif TaskManager.currentTask.type == "COLLECT" then
                 currentProgress = "Collecting Cash"
             elseif TaskManager.currentTask.type == "LOCK" then
