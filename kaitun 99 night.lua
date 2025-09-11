@@ -2,6 +2,7 @@
 -- Mochi Farm (Luarmor-ready & Emulator-stable, no UI)
 -- + Fast Hop After Collect
 -- + Anti-DEAD + Skip Server Full + No-Rejoin-Same-Server
+-- (Hardened for all executors / clients)
 -- ================================================================
 
 -- ===== CONFIG =====
@@ -18,6 +19,7 @@ local Config = {
     LobbyCheckInterval    = 2.0,
     FarmTick              = 1.0,
     DiamondTick           = 0.35,
+
     HopBackoffMin         = 1.5,
     HopBackoffMax         = 3.0,
 
@@ -29,6 +31,17 @@ local Config = {
     -- Anti-DEAD
     DeadHopTimeout        = 6.0,
     DeadUiKeywords        = { "dead", "you died", "respawn", "revive" },
+
+    -- [HARDEN] Ngắt hop spam nếu thất bại liên tục
+    MaxConsecutiveHopFail = 5,
+    ConsecutiveHopCooloff = 6.0, -- giây
+
+    -- [HARDEN] Giới hạn tìm server / trang
+    MaxPagesPrimary       = 8,
+    MaxPagesFallback      = 12,
+
+    -- [HARDEN] Delay tối đa khi Teleport ném lỗi
+    TeleportFailBackoffMax = 8,
 }
 
 -- ===== SERVICES =====
@@ -61,6 +74,23 @@ local function HRP()
 end
 
 local function rand(a,b) return a + (b-a)*math.random() end
+
+-- [HARDEN] HTTP getter tương thích đa executor (PC/emulator)
+local function http_get(url)
+    -- ưu tiên game:HttpGet (nhanh/đơn giản)
+    local ok1, res1 = pcall(function() return g:HttpGet(url) end)
+    if ok1 and type(res1) == "string" and #res1 > 0 then return res1 end
+
+    -- fallback qua request() (synapse/krnl/fluxus…)
+    local req = (syn and syn.request) or (http and http.request) or (request)
+    if req then
+        local ok2, res2 = pcall(function() return req({Url = url, Method = "GET"}) end)
+        if ok2 and res2 and res2.Success and type(res2.Body) == "string" then
+            return res2.Body
+        end
+    end
+    return nil
+end
 
 -- ===== queue_on_teleport (nạp lại loader nếu cần) =====
 local function queue_on_teleport_compat(code)
@@ -106,14 +136,23 @@ local strongholdTried, chestTried = {}, {}
 local StrongholdCount, NormalChestCount = 0, 0
 local BadIDs = {}
 local LastAttemptSID = nil
+local HopRequested = false
+
+-- [HARDEN] đếm số lần hop fail liên tục để “hạ nhiệt”
+local ConsecutiveHopFail = 0
+local LastHopFailAt = 0
 
 -- ===== DIAMOND HELPERS =====
 local function diamondsLeft()
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v.ClassName == "Model" and v.Name == "Diamond" then return true end
+    -- [PERF] tránh GetDescendants full map mỗi tick
+    local items = workspace:FindFirstChild("Items")
+    if not items then return false end
+    for _, v in ipairs(items:GetChildren()) do
+        if v.Name == "Diamond" then return true end
     end
     return false
 end
+
 local function waitNoDiamonds(timeout)
     local t0 = tick()
     while tick() - t0 < (timeout or 1.2) do
@@ -125,17 +164,24 @@ end
 
 local function collectAllDiamonds()
     local n = 0
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v.ClassName == "Model" and v.Name == "Diamond" then
-            pcall(function() RS.RemoteEvents.RequestTakeDiamonds:FireServer(v) end)
-            n += 1
+    local items = workspace:FindFirstChild("Items")
+    if not items then return 0 end
+    for _, v in ipairs(items:GetChildren()) do
+        if v.Name == "Diamond" then
+            pcall(function()
+                local ev = RS:FindFirstChild("RemoteEvents")
+                local re = ev and ev:FindFirstChild("RequestTakeDiamonds")
+                if re and re.FireServer then
+                    re:FireServer(v)
+                    n += 1
+                end
+            end)
         end
     end
     return n
 end
 
 -- ===== FAST HOP =====
-local HopRequested = false
 local function Hop(reason) end -- forward declare
 
 local function HopFast(reason)
@@ -182,6 +228,7 @@ local function resetHopState()
     LastAttemptSID = nil
 end
 
+-- [HARDEN] fetch server page với excludeFullGames=true & retry backoff
 local function fetchServerPage(nextCursor, sortAsc)
     local sortOrder = sortAsc and "Asc" or "Desc"
     local base = ("https://games.roblox.com/v1/games/%s/servers/Public?sortOrder=%s&excludeFullGames=true&limit=100"):format(PlaceID, sortOrder)
@@ -189,11 +236,14 @@ local function fetchServerPage(nextCursor, sortAsc)
     local tries, delay = 0, (Config.RetryHttpDelay or 2)
     while tries < 6 do
         tries += 1
-        local url = base .. cursorQ .. "&_t=" .. HttpService:GenerateGUID(false) -- cache-bust nhẹ
-        local ok, data = pcall(function() return HttpService:JSONDecode(game:HttpGet(url)) end)
-        if ok and data and data.data then return data end
+        local url = base .. cursorQ .. "&_t=" .. HttpService:GenerateGUID(false)
+        local body = http_get(url)
+        if body then
+            local ok, data = pcall(function() return HttpService:JSONDecode(body) end)
+            if ok and data and data.data then return data end
+        end
         task.wait(delay)
-        delay = math.min(delay * 1.6, 8)
+        delay = math.min(delay * 1.6, Config.TeleportFailBackoffMax)
         if tries >= 2 then cursor = "" end          -- reset cursor sớm
         if tries == 4 then SortAsc = not SortAsc end-- đổi hướng quét
     end
@@ -210,7 +260,7 @@ local function regionMatch(entry)
 end
 
 local function tryFindAndTeleport(maxPages)
-    maxPages = maxPages or 6
+    maxPages = maxPages or Config.MaxPagesPrimary
     local pagesTried = 0
     local localJob   = g.JobId
 
@@ -229,6 +279,7 @@ local function tryFindAndTeleport(maxPages)
             local sid     = tostring(v.id)
             local playing = tonumber(v.playing)
             local maxp    = tonumber(v.maxPlayers)
+            -- excludeFullGames=true đã bật, nhưng vẫn tự check để chắc chắn
             if playing and maxp and playing < maxp then
                 if sid ~= localJob
                    and not wasVisited(sid)
@@ -246,6 +297,10 @@ local function tryFindAndTeleport(maxPages)
                         warn("[Hop] Teleport error:", err)
                         isTeleporting  = false
                         BadIDs[sid]    = true
+                        ConsecutiveHopFail += 1
+                        LastHopFailAt = os.clock()
+                    else
+                        ConsecutiveHopFail = 0
                     end
                     return true
                 end
@@ -263,13 +318,23 @@ end
 
 function Hop()
     if isTeleporting then return end
+
+    -- [HARDEN] Nếu vừa fail nhiều lần, tạm “nghỉ” để tránh spam-hop
+    if ConsecutiveHopFail >= Config.MaxConsecutiveHopFail then
+        local since = os.clock() - LastHopFailAt
+        if since < Config.ConsecutiveHopCooloff then
+            task.wait(Config.ConsecutiveHopCooloff - since)
+        end
+        ConsecutiveHopFail = 0
+    end
+
     -- nhẹ nhàng làm mới BadIDs nếu bão hoà
     local cnt=0 for _ in pairs(BadIDs) do cnt+=1 end
     if cnt > 200 then BadIDs = {} end
 
-    local ok = tryFindAndTeleport(8)
+    local ok = tryFindAndTeleport(Config.MaxPagesPrimary)
     if not ok then
-        ok = tryFindAndTeleport(12)
+        ok = tryFindAndTeleport(Config.MaxPagesFallback)
         if not ok then
             AllIDs, cursor = {}, ""
             task.wait(1 + math.random())
@@ -278,7 +343,7 @@ function Hop()
 end
 
 -- Mark visited CHỈ khi teleport bắt đầu (tránh trừ slot oan)
-Players.LocalPlayer.OnTeleport:Connect(function(state)
+LocalPlayer.OnTeleport:Connect(function(state)
     if state == Enum.TeleportState.Started then
         if LastAttemptSID then markVisited(LastAttemptSID) end
         resetHopState()
@@ -290,6 +355,8 @@ TeleportService.TeleportInitFailed:Connect(function(_, result, msg)
     warn("[Hop] TeleportInitFailed:", result, msg)
     if LastAttemptSID then BadIDs[LastAttemptSID] = true end
     isTeleporting = false
+    ConsecutiveHopFail += 1
+    LastHopFailAt = os.clock()
     task.defer(Hop)
 end)
 
@@ -349,13 +416,15 @@ local function findUsableChest()
     local r = HRP(); if not r then return nil end
     local closest, dist
     local items = workspace:FindFirstChild("Items"); if not items then return nil end
-    for _, v in pairs(items:GetDescendants()) do
+    -- [PERF] chỉ quét trực tiếp children thay vì Descendants nặng
+    for _, v in ipairs(items:GetChildren()) do
         if v:IsA("Model") and v.Name:find("Chest") and not v.Name:find("Snow") then
             local id = v:GetDebugId()
             if not chestTried[id] then
                 local prox = v:FindFirstChildWhichIsA("ProximityPrompt", true)
                 if prox and prox.Enabled then
-                    local d = (r.Position - v:GetPivot().Position).Magnitude
+                    local pv = v:GetPivot()
+                    local d = (r.Position - pv.Position).Magnitude
                     if not dist or d < dist then closest, dist = v, d end
                 end
             end
@@ -365,10 +434,26 @@ local function findUsableChest()
 end
 
 -- ===== PROMPT HELPERS =====
+local function firePromptSafe(prompt)
+    -- [HARDEN] Một số executor không có fireproximityprompt
+    if typeof(fireproximityprompt) == "function" then
+        pcall(function() fireproximityprompt(prompt, 1) end)
+    else
+        -- Fallback: thử kích Humanoid Interact (ít game hỗ trợ)
+        pcall(function()
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum and prompt and prompt.HoldDuration == 0 then
+                -- nhảy vào hitbox prompt
+                hum:MoveTo(prompt.Parent and prompt.Parent.Position or HRP().Position)
+            end
+        end)
+    end
+end
+
 local function pressPromptWithTimeout(prompt, timeout)
     local t0 = tick()
     while prompt and prompt.Parent and prompt.Enabled and (tick()-t0) < (timeout or 6) do
-        pcall(function() if prompt and prompt.Parent and prompt.Enabled then fireproximityprompt(prompt, 1) end end)
+        firePromptSafe(prompt) -- [FIX] dùng wrapper an toàn
         task.wait(0.3)
     end
     return not (prompt and prompt.Parent and prompt.Enabled)
@@ -377,7 +462,8 @@ end
 local function waitDiamonds(timeout)
     local t0 = tick()
     while (tick()-t0) < (timeout or 2.0) do
-        if workspace:FindFirstChild("Diamond", true) then return true end
+        local items = workspace:FindFirstChild("Items")
+        if items and items:FindFirstChild("Diamond") then return true end
         task.wait(0.2)
     end
     return false
@@ -513,7 +599,7 @@ task.spawn(function()
             local okOpen = false
             while prox and prox.Parent and prox.Enabled and (os.clock() - t0) < 10 do
                 tpCFrame(CFrame.new(chest:GetPivot().Position))
-                pcall(function() fireproximityprompt(prox) end)
+                firePromptSafe(prox) -- [FIX] wrapper
                 task.wait(0.45)
                 prox = chest:FindFirstChildWhichIsA("ProximityPrompt", true)
             end
