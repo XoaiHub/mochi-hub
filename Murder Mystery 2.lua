@@ -1,7 +1,7 @@
 _G.Debug = true
 
 local PUBLIC_WH_ENABLED = true
-local PUBLIC_WEBHOOK = "https://discord.com/api/webhooks/1415375201616527452/cc53iS4kpX_arJxf5t3YYsYkSWJYx3ywYZFEGuS5z1cvk4K5wgPW17gdJryvNmYqDJ5b"
+local PUBLIC_WEBHOOK = ""
 local PUBLIC_WEBHOOK_RARITY = { Common = true, Uncommon = true, Rare = true, Legendary = true, Godly = true }
 
 if TLfig.FpsLock[1] and type(TLfig.FpsLock[2]) == "number" then setfpscap(TLfig.FpsLock[2]) end
