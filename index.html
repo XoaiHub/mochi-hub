@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Message</title>
+    <style>
+        body {
+            background: black;
+            color: lime;
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 30px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="text">Loading...</div>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const msg = params.get("msg");
+
+    if (msg) {
+        document.getElementById("text").innerText = msg;
+    } else {
+        document.getElementById("text").innerText = "Xin chào!";
+    }
+</script>
+
+</body>
+</html>
