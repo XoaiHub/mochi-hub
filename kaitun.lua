@@ -1,3 +1,23 @@
+local Config = {
+    EnableQuest = getgenv().kaitun.Enable,
+    EnableMotherBear = true,
+    EnableBlackBear = true,
+    MotherBearStopQuest = "Seven To Seven",
+    FarmDuration = 30,
+    MaxTokensPerScan = 20,
+    EnableGearUpgrade = true,
+    EnableAutoEgg = true,
+    EnableAutoSell = true,
+    TweenSpeed = tonumber(getgenv().kaitun.TweenSpeed) or 50,
+    WalkSpeed = tonumber(getgenv().kaitun.WalkSpeed) or 60,
+    SellTimeout = 90,
+    MobDetectRange = 25,
+    EnableMobAvoidance = true,
+    EnableStarJelly = getgenv().kaitun.Sticker,
+    FarmField = nil,
+    FpsBoost = getgenv().kaitun.FpsBoost,
+}
+
 repeat
     task.wait()
 until game:IsLoaded()
@@ -2289,3 +2309,4 @@ task.spawn(function()
         task.wait(5)
     end
 end) 
+
